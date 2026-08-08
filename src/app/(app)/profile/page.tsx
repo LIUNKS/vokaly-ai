@@ -25,7 +25,7 @@ import { TRACKS } from "@/lib/tracks";
 import { saveProfile } from "./actions";
 
 const YEARS_OPTIONS = ["1", "1+", "2", "2+", "3", "3+"];
-const TRACK_ITEMS = TRACKS.map((t) => ({ value: t.slug, label: t.label }));
+const TRACK_ITEMS = TRACKS.map((t) => ({ value: t.slug, label: t.name }));
 const YEAR_ITEMS = YEARS_OPTIONS.map((y) => ({ value: y, label: `${y} años` }));
 
 export default async function ProfilePage({
@@ -70,7 +70,7 @@ export default async function ProfilePage({
               <SelectContent>
                 {TRACKS.map((track) => (
                   <SelectItem key={track.slug} value={track.slug}>
-                    {track.label}
+                    {track.name}
                   </SelectItem>
                 ))}
               </SelectContent>
