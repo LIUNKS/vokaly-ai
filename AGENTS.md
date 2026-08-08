@@ -20,3 +20,4 @@ Stack: Next.js + TS, shadcn/ui, Vapi (AI interviewer), Portal (realtime chat/rea
 - **DRY** — but only real duplication (same logic, same reason to change). Three similar lines that change for different reasons stay three lines.
 - **Comments explain why, not what.** Only when the reason isn't obvious from the code itself (a constraint, a workaround, an invariant). No comment restating what the next line does.
 - **No direct push to `main`.** Every change: new branch, PR. No exceptions.
+- **All DB migrations via `drizzle-kit` (`npm run db:generate`).** Never hand-edit files in `drizzle/`, never `drizzle-kit push` against Supabase — no tracked history, breaks `migrate`.
