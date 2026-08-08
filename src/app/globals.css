@@ -244,3 +244,22 @@
     @apply font-sans;
   }
 }
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-80px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-180px) scale(1);
+  }
+}
+
+.animate-float-up {
+  animation: floatUp 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}

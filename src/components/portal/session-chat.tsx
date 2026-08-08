@@ -18,6 +18,12 @@ interface ChatMessage {
   senderId?: string;
 }
 
+interface FloatingReaction {
+  id: number;
+  emoji: string;
+  leftOffset: number; // Desplazamiento X aleatorio
+}
+
 const DEFAULT_EMOJIS = ['👏', '🔥', '💡', '👍', '🤔'];
 
 function ChatRoom({
@@ -34,7 +40,7 @@ function ChatRoom({
   const [inputMessage, setInputMessage] = useState('');
   const [showEmojiMenu, setShowEmojiMenu] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
-  const [activeReactions, setActiveReactions] = useState<{ id: number; emoji: string }[]>([]);
+  const [activeReactions, setActiveReactions] = useState<FloatingReaction[]>([]);
   const [quickEmojis, setQuickEmojis] = useState<string[]>(DEFAULT_EMOJIS);
 
   const { messages, send } = useChannel<ChatMessage>({ channelId: sessionId });
@@ -54,14 +60,20 @@ function ChatRoom({
           setQuickEmojis(parsed.slice(0, 5));
         }
       } catch (e) {
+        // Fallback
       }
     }
   }, []);
 
+  // Función para disparar la animación ascendente desde abajo
   const triggerAnimation = (emoji: string) => {
     const animId = Date.now() + Math.random();
-    setActiveReactions((prev) => [...prev, { id: animId, emoji }]);
+    // Offset horizontal aleatorio (-20px a +20px) para variedad visual
+    const leftOffset = Math.floor(Math.random() * 40) - 20;
 
+    setActiveReactions((prev) => [...prev, { id: animId, emoji, leftOffset }]);
+
+    // Desaparece del DOM tras finalizar la animación (2 segundos)
     setTimeout(() => {
       setActiveReactions((prev) => prev.filter((r) => r.id !== animId));
     }, 2000);
@@ -75,7 +87,6 @@ function ChatRoom({
     });
   };
 
-  // Escuchar reacciones enviadas por otros
   useEffect(() => {
     if (messages.length === 0) return;
 
@@ -93,7 +104,6 @@ function ChatRoom({
     }
   }, [messages]);
 
-  // Cerrar menú/picker al hacer click afuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -142,11 +152,18 @@ function ChatRoom({
   const chatMessagesOnly = messages.filter((m) => m.content && m.content.text);
 
   return (
-    <div className="relative flex h-[450px] flex-col rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm">
-      {/* Reacciones efímeras flotando sobre el contenedor del chat */}
-      <div className="pointer-events-none absolute right-4 top-2 z-10 flex gap-2">
+    <div className="relative flex h-[450px] flex-col rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm overflow-hidden">
+      
+      {/* 🚀 Emojis flotantes: Nacen desde abajo a la derecha y flotan hacia arriba */}
+      <div className="pointer-events-none absolute bottom-16 right-6 z-20 flex flex-col items-center">
         {activeReactions.map((r) => (
-          <span key={r.id} className="animate-bounce text-3xl">
+          <span
+            key={r.id}
+            style={{
+              transform: `translateX(${r.leftOffset}px)`,
+            }}
+            className="absolute text-3xl animate-float-up"
+          >
             {r.emoji}
           </span>
         ))}
@@ -176,10 +193,9 @@ function ChatRoom({
         )}
       </div>
 
-      {/* Input de Chat con botón de Emojis integrado estilo Zoom/Teams */}
+      {/* Barra de entrada de texto */}
       {phase !== 'concluida' && (
-        <div className="relative" ref={menuRef}>
-          {/* Desplegable: Picker completo */}
+        <div className="relative z-10" ref={menuRef}>
           {showFullPicker && (
             <div className="absolute bottom-14 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg">
               <EmojiPicker
@@ -193,7 +209,6 @@ function ChatRoom({
             </div>
           )}
 
-          {/* Desplegable: Emojis Rápidos / Recientes */}
           {showEmojiMenu && !showFullPicker && (
             <div className="absolute bottom-14 right-12 z-50 flex items-center gap-1 rounded-full border border-border bg-card p-2 shadow-md animate-in fade-in zoom-in-95">
               {quickEmojis.map((emoji) => (
@@ -230,7 +245,6 @@ function ChatRoom({
                 className="w-full rounded-md border border-input bg-background py-2 pl-3 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
 
-              {/* Botón de Carita Feliz DENTRO del Input */}
               <button
                 type="button"
                 onClick={() => {
