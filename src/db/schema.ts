@@ -10,7 +10,7 @@ export const users = pgTable("users", {
   careerPath: text("career_path"), // TrackSlug, validado en app (zod) — no enum de DB
   skills: text("skills"),
   description: text("description"),
-});
+}).enableRLS(); // sin policies = deny-all para anon/authenticated vía PostgREST; backend usa el rol postgres (bypassa RLS)
 
 export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -24,4 +24,4 @@ export const sessions = pgTable("sessions", {
   scorecard: jsonb("scorecard"), // ScorecardSchema, null hasta 'concluida'
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   concludedAt: timestamp("concluded_at", { withTimezone: true }),
-});
+}).enableRLS();
