@@ -1,5 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { users } from "@/db/schema";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -45,6 +48,27 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  const isProfileRoute = request.nextUrl.pathname.startsWith("/profile");
+  if (user && !isAuthRoute && !isProfileRoute) {
+    const [profile] = await db
+      .select({
+        careerPath: users.careerPath,
+        yearsOfExperience: users.yearsOfExperience,
+        description: users.description,
+      })
+      .from(users)
+      .where(eq(users.id, user.id));
+
+    const profileIncomplete =
+      !profile?.careerPath || !profile?.yearsOfExperience || !profile?.description;
+
+    if (profileIncomplete) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/profile";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
