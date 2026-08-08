@@ -14,17 +14,30 @@ Set fijo, sin UI de edición (roadmap.md Track A: "seed tracks predeterminados h
 type TrackSlug = 'devops' | 'frontend' | 'backend' | 'data_engineering'
   | 'data_science' | 'software_architect' | 'cloud_engineer' | 'full_stack';
 
+type PhaseSlug = 'intro' | 'tecnica_1' | 'tecnica_2' | 'conductual' | 'cierre';
+
+// compartida entre tracks — pacing de los 10 min es igual para todos,
+// no se repite por track (editar el ritmo = editar un solo lugar)
+const PHASES: { slug: PhaseSlug; name: string; minutes: number }[] = [
+  { slug: 'intro', name: 'Introducción', minutes: 1 },
+  { slug: 'tecnica_1', name: 'Técnica — conceptual', minutes: 3 },
+  { slug: 'tecnica_2', name: 'Técnica — aplicada', minutes: 3 },
+  { slug: 'conductual', name: 'Conductual (STAR)', minutes: 2 },
+  { slug: 'cierre', name: 'Cierre', minutes: 1 },
+]; // suma = duración total de la sesión (10 min), no se guarda por separado
+
 type Track = {
   slug: TrackSlug;
   name: string;
   roleDescription: string; // el "puesto pre cargado" — empresa/rol de referencia (domain.md glosario), default si el candidato no pega su propio JD
-  seniorityDefault: 'junior' | 'mid' | 'senior';
   rubric: string;
-  guideQuestions: string[];
+  guideQuestions: { phase: PhaseSlug; question: string; focus: string }[];
 };
 ```
 
 domain.md glosario nombra 4 partes de la "forma": rúbrica, **tono**, preguntas guía, empresa/rol de referencia. Tono no tiene campo propio — si hace falta, entra como prosa dentro de `rubric`/`roleDescription`, no separado (MVP, no hay caso que necesite leerlo aparte). Decir si eso no alcanza.
+
+`seniorityDefault` — **removido.** El candidato completa perfil (incl. `years_of_experience`) antes de poder crear sesión (gate ya construido), así que Blueprint-gen siempre tiene el nivel real del candidato disponible — no hace falta un default estático por track que nunca se usaría. Ver `BlueprintInput` abajo.
 
 ### Blueprint — value object, NO es tabla
 
@@ -36,13 +49,17 @@ Procedencia de cada campo:
 |---|---|
 | `trackSlug` | elegido por el candidato de la lista hardcoded de Tracks |
 | `jobDescription` | opcional, texto que el candidato pega/escribe |
-| `content` | **generado**, no lo escribe nadie — AI Gateway toma `Track.roleDescription` + `Track.rubric` + `Track.guideQuestions` (seed, hardcoded) + `jobDescription` y devuelve el prompt final |
+| `candidateExperience` | `users.years_of_experience`, leído vía `candidate_id` — no se duplica en `sessions`, solo se usa como input de generación |
+| `content` | **generado**, no lo escribe nadie — AI Gateway toma `Track.roleDescription` + `Track.rubric` + `Track.guideQuestions` (seed, hardcoded) + `jobDescription` + `candidateExperience` (calibra dificultad) y devuelve el prompt final |
+
+`guideQuestions[].question` es un **ejemplo**, no un guion literal — fija tono/dificultad para ese `focus`, no el escenario exacto. El prompt a Blueprint-gen debe pedir explícitamente que genere un escenario concreto propio para cada `focus` (ej: `focus: "diseño de datos / concurrencia"` → la IA puede preguntar por Redis, un rate limiter, un feed de notificaciones — lo que encaje con `jobDescription`/`candidateExperience` — no repetir `question` tal cual). Evita que 8 tracks × mismas 5 preguntas se sientan repetidas entre sesiones.
 
 ```ts
 // input al AI Gateway
 const BlueprintInput = z.object({
   trackSlug: z.enum([...]),           // TrackSlug — elegido por el candidato
   jobDescription: z.string().optional(), // pegado por el candidato, opcional — refina el track, nunca lo reemplaza
+  candidateExperience: z.string(),    // users.years_of_experience — calibra dificultad de las guideQuestions, no se guarda en Blueprint (perfil sigue sin ser parte del value object, solo del input de generación)
 });
 
 // output del AI Gateway, esto es lo que se guarda en sessions.blueprint_content
