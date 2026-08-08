@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserRound } from "lucide-react";
+import { UserRound, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [{ href: "/profile", label: "Perfil", icon: UserRound }];
+const NAV_LINKS = [
+  { href: "/nueva-sesion", label: "Nueva sesión", icon: MessageSquarePlus },
+  { href: "/profile", label: "Perfil", icon: UserRound },
+];
 
 export function AppNavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
