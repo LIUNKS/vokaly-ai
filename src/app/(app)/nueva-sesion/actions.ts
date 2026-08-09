@@ -49,14 +49,6 @@ async function crearSesionRow(
   return { id: session.id, blueprintContent } as const;
 }
 
-export async function crearSesion(formData: FormData) {
-  const result = await crearSesionRow(formData);
-  if ("error" in result) {
-    redirect(`/nueva-sesion?error=${encodeURIComponent(result.error)}`);
-  }
-  redirect(`/nueva-sesion/${result.id}`);
-}
-
 export type CrearSesionModalState =
   | { status: "idle" }
   | { status: "error"; message: string }
