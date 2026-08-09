@@ -11,13 +11,13 @@ import {
   Clock,
   Filter,
   ArrowUpDown,
-  Search,
   BookOpen,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -41,7 +41,9 @@ export function HistorialClient({
   const [filterState, setFilterState] = useState<string>("todos");
   const [filterTrack, setFilterTrack] = useState<string>("todos");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const itemsPerPage = 8;
 
   // Aplicar filtros y ordenamiento
   const filteredSessions = useMemo(() => {
@@ -57,14 +59,6 @@ export function HistorialClient({
           return false;
         }
 
-        // 3. Filtro por búsqueda de texto
-        if (searchQuery.trim() !== "") {
-          const q = searchQuery.toLowerCase();
-          const matchTrack = s.trackName.toLowerCase().includes(q) || s.trackSlug.toLowerCase().includes(q);
-          const matchId = s.id.toLowerCase().includes(q);
-          if (!matchTrack && !matchId) return false;
-        }
-
         return true;
       })
       .sort((a, b) => {
@@ -72,7 +66,60 @@ export function HistorialClient({
         const timeB = new Date(b.createdAt).getTime();
         return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
       });
-  }, [initialSessions, filterState, filterTrack, sortOrder, searchQuery]);
+  }, [initialSessions, filterState, filterTrack, sortOrder]);
+
+  const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), Math.max(1, totalPages));
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const currentSessions = filteredSessions.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleStateChange = (val: string | null) => {
+    setFilterState(val || "todos");
+    setCurrentPage(1);
+  };
+
+  const handleTrackChange = (val: string | null) => {
+    setFilterTrack(val || "todos");
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (val: string | null) => {
+    setSortOrder((val as "desc" | "asc") || "desc");
+    setCurrentPage(1);
+  };
+
+  // Generar números de página mostrando hasta 10 páginas por bloque con elipsis (...)
+  const getPageNumbers = (): (number | string)[] => {
+    const maxVisible = 10;
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    let startPage = Math.max(1, safeCurrentPage - 4);
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    const pages: (number | string)[] = [];
+
+    if (startPage > 1) {
+      pages.push(1);
+      if (startPage > 2) pages.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pages.push("...");
+      if (!pages.includes(totalPages)) pages.push(totalPages);
+    }
+
+    return pages;
+  };
 
   return (
     <div className="space-y-6">
@@ -95,40 +142,34 @@ export function HistorialClient({
 
       {/* Barra de Filtros y Controles */}
       <Card className="p-4 border border-border bg-card shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Búsqueda por Texto */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por track o ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 text-xs"
-            />
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Filtro por Estado */}
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground shrink-0 hidden sm:block" />
-            <Select value={filterState} onValueChange={(val) => setFilterState(val || "todos")}>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Filter className="size-3.5 text-primary" />
+              Filtrar por Estado
+            </label>
+            <Select value={filterState} onValueChange={handleStateChange}>
               <SelectTrigger className="w-full text-xs">
-                <SelectValue placeholder="Filtrar por Estado" />
+                <SelectValue placeholder="Seleccionar Estado" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los Estados</SelectItem>
                 <SelectItem value="concluida">Concluidas (Evaluadas)</SelectItem>
-                <SelectItem value="en_vivo">En Vivo (Activas)</SelectItem>
                 <SelectItem value="configurando">Configurando</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Filtro por Track */}
-          <div className="flex items-center gap-2">
-            <BookOpen className="size-4 text-muted-foreground shrink-0 hidden sm:block" />
-            <Select value={filterTrack} onValueChange={(val) => setFilterTrack(val || "todos")}>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="size-3.5 text-primary" />
+              Filtrar por Especialidad / Track
+            </label>
+            <Select value={filterTrack} onValueChange={handleTrackChange}>
               <SelectTrigger className="w-full text-xs">
-                <SelectValue placeholder="Filtrar por Track" />
+                <SelectValue placeholder="Seleccionar Track" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los Tracks</SelectItem>
@@ -142,11 +183,14 @@ export function HistorialClient({
           </div>
 
           {/* Orden por Fecha */}
-          <div className="flex items-center gap-2">
-            <ArrowUpDown className="size-4 text-muted-foreground shrink-0 hidden sm:block" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <ArrowUpDown className="size-3.5 text-primary" />
+              Ordenar por Fecha
+            </label>
             <Select
               value={sortOrder}
-              onValueChange={(val) => setSortOrder((val as "desc" | "asc") || "desc")}
+              onValueChange={(val) => handleSortChange((val as "desc" | "asc") || "desc")}
             >
               <SelectTrigger className="w-full text-xs">
                 <SelectValue placeholder="Ordenar por Fecha" />
@@ -183,102 +227,162 @@ export function HistorialClient({
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredSessions.map((s) => {
-            const isConcluded = s.state === "concluida";
-            const isLive = s.state === "en_vivo";
-            const dateStr = s.createdAt
-              ? new Date(s.createdAt).toLocaleDateString("es-ES", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "Reciente";
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {currentSessions.map((s) => {
+              const isConcluded = s.state === "concluida";
+              const isLive = s.state === "en_vivo";
+              const dateStr = s.createdAt
+                ? new Date(s.createdAt).toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Reciente";
 
-            const globalScore = s.scorecard?.globalScore || 86;
+              const globalScore = s.scorecard?.globalScore || 86;
 
-            return (
-              <Card
-                key={s.id}
-                className="relative overflow-hidden border border-border bg-card hover:shadow-md transition-shadow flex flex-col justify-between"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base font-bold">
-                        {s.trackName}
-                      </CardTitle>
-                      <CardDescription className="text-xs flex items-center gap-1.5 mt-1">
-                        <Clock className="size-3 text-muted-foreground" />
-                        {dateStr}
-                      </CardDescription>
-                    </div>
+              return (
+                <Card
+                  key={s.id}
+                  className="relative overflow-hidden border border-border bg-card hover:shadow-md transition-shadow flex flex-col justify-between"
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-base font-bold">
+                          {s.trackName}
+                        </CardTitle>
+                        <CardDescription className="text-xs flex items-center gap-1.5 mt-1">
+                          <Clock className="size-3 text-muted-foreground" />
+                          {dateStr}
+                        </CardDescription>
+                      </div>
 
-                    {isConcluded ? (
-                      <Badge
-                        variant="outline"
-                        className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-semibold gap-1 shrink-0"
-                      >
-                        <CheckCircle2 className="size-3" /> Concluida
-                      </Badge>
-                    ) : isLive ? (
-                      <Badge
-                        variant="outline"
-                        className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-xs font-semibold gap-1 shrink-0"
-                      >
-                        <Radio className="size-3 animate-pulse" /> En Vivo
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        Configurando
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-0 space-y-4">
-                  <div className="flex items-center justify-between pt-3 border-t border-border/60">
-                    <div>
-                      {isConcluded && s.scorecard ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground font-medium">
-                            Puntaje Global:
-                          </span>
-                          <span className="text-sm font-black text-primary">
-                            {globalScore}/100
-                          </span>
-                        </div>
+                      {isConcluded ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-semibold gap-1 shrink-0"
+                        >
+                          <CheckCircle2 className="size-3" /> Concluida
+                        </Badge>
+                      ) : isLive ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-xs font-semibold gap-1 shrink-0"
+                        >
+                          <Radio className="size-3 animate-pulse" /> En Vivo
+                        </Badge>
                       ) : (
-                        <span className="text-xs text-muted-foreground italic">
-                          {isConcluded ? "Scorecard listo" : "Sesión activa"}
-                        </span>
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                          Configurando
+                        </Badge>
                       )}
                     </div>
+                  </CardHeader>
 
-                    <div className="flex items-center gap-2">
-                      {isConcluded && (
-                        <ScorecardModal
-                          scorecard={s.scorecard}
-                          trackName={s.trackName}
-                          seniority={userSeniority}
-                          concludedAt={s.concludedAt || s.createdAt}
-                        />
-                      )}
+                  <CardContent className="pt-0 space-y-4">
+                    <div className="flex items-center justify-between pt-3 border-t border-border/60">
+                      <div>
+                        {isConcluded && s.scorecard ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground font-medium">
+                              Puntaje Global:
+                            </span>
+                            <span className="text-sm font-black text-primary">
+                              {globalScore}/100
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">
+                            {isConcluded ? "Scorecard listo" : "Sesión activa"}
+                          </span>
+                        )}
+                      </div>
 
-                      <Link
-                        href={`/sesion/${s.id}`}
-                        className={buttonVariants({ variant: "ghost", size: "sm" })}
+                      <div className="flex items-center gap-2">
+                        {isConcluded && (
+                          <ScorecardModal
+                            scorecard={s.scorecard}
+                            trackName={s.trackName}
+                            seniority={userSeniority}
+                            concludedAt={s.concludedAt || s.createdAt}
+                          />
+                        )}
+
+                        <Link
+                          href={`/sesion/${s.id}`}
+                          className={buttonVariants({ variant: "ghost", size: "sm" })}
+                        >
+                          Ir a Sesión <ArrowRight className="ml-1 size-3.5" />
+                        </Link>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Barra de Controles de Paginación */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
+              <p className="text-xs text-muted-foreground">
+                Mostrando <span className="font-medium text-foreground">{startIndex + 1}</span> -{" "}
+                <span className="font-medium text-foreground">
+                  {Math.min(startIndex + itemsPerPage, filteredSessions.length)}
+                </span>{" "}
+                de <span className="font-medium text-foreground">{filteredSessions.length}</span> entrevistas
+              </p>
+
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="size-4" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+
+                {/* Números de página con elipsis */}
+                <div className="flex items-center gap-1 px-1">
+                  {getPageNumbers().map((pageNum, idx) =>
+                    typeof pageNum === "number" ? (
+                      <Button
+                        key={pageNum}
+                        variant={pageNum === safeCurrentPage ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="size-8 p-0 text-xs font-semibold cursor-pointer"
                       >
-                        Ir a Sesión <ArrowRight className="ml-1 size-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                        {pageNum}
+                      </Button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground">
+                        ...
+                      </span>
+                    )
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

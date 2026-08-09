@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Mic, Bot } from "lucide-react";
+import { Mic, Bot, Sparkles, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface AudioVisualizerProps {
@@ -9,6 +9,7 @@ interface AudioVisualizerProps {
   speakerRole: "assistant" | "user" | null;
   volumeLevel: number; // 0 to 1
   candidatoNombre: string;
+  estado?: "configurando" | "en_vivo" | "concluida";
 }
 
 export function AudioVisualizer({
@@ -16,9 +17,10 @@ export function AudioVisualizer({
   speakerRole,
   volumeLevel,
   candidatoNombre,
+  estado = "configurando",
 }: AudioVisualizerProps) {
-  const isAssistant = speakerRole === "assistant" && isSpeaking;
-  const isUser = speakerRole === "user" && isSpeaking;
+  const isAssistant = estado === "en_vivo" && speakerRole === "assistant" && isSpeaking;
+  const isUser = estado === "en_vivo" && speakerRole === "user" && isSpeaking;
 
   return (
     <Card className="w-full relative overflow-hidden my-4 border border-border shadow-sm">
@@ -69,24 +71,42 @@ export function AudioVisualizer({
 
         {/* Speaker Status Indicator */}
         <div className="z-10 text-center mt-2">
-          {isAssistant && (
-            <p className="text-sm font-semibold text-primary tracking-wide flex items-center justify-center gap-2 animate-bounce">
-              <span className="size-2 rounded-full bg-primary animate-ping" />
-              Entrevistador Vapi hablando...
+          {estado === "configurando" && (
+            <p className="text-sm font-semibold text-amber-500 tracking-wide flex items-center justify-center gap-2">
+              <Sparkles className="size-4 animate-spin" />
+              Sesión por empezar...
             </p>
           )}
 
-          {isUser && (
+          {estado === "concluida" && (
             <p className="text-sm font-semibold text-emerald-500 tracking-wide flex items-center justify-center gap-2">
-              <span className="size-2 rounded-full bg-emerald-500" />
-              Tu turno, {candidatoNombre}...
+              <CheckCircle2 className="size-4" />
+              Sesión finalizada
             </p>
           )}
 
-          {!isSpeaking && (
-            <p className="text-sm text-muted-foreground font-medium">
-              Escuchando...
-            </p>
+          {estado === "en_vivo" && (
+            <>
+              {isAssistant && (
+                <p className="text-sm font-semibold text-primary tracking-wide flex items-center justify-center gap-2 animate-bounce">
+                  <span className="size-2 rounded-full bg-primary animate-ping" />
+                  Entrevistador Vapi hablando...
+                </p>
+              )}
+
+              {isUser && (
+                <p className="text-sm font-semibold text-emerald-500 tracking-wide flex items-center justify-center gap-2">
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                  Tu turno, {candidatoNombre}...
+                </p>
+              )}
+
+              {!isSpeaking && (
+                <p className="text-sm text-muted-foreground font-medium">
+                  Escuchando...
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -94,7 +114,7 @@ export function AudioVisualizer({
         <div className="flex items-center justify-center gap-1.5 h-8 mt-6 z-10">
           {Array.from({ length: 9 }).map((_, index) => {
             const heightMultiplier = Math.sin((index + 1) * 0.4) * volumeLevel;
-            const barHeight = isSpeaking ? Math.max(12, Math.min(32, heightMultiplier * 40)) : 6;
+            const barHeight = isSpeaking && estado === "en_vivo" ? Math.max(12, Math.min(32, heightMultiplier * 40)) : 6;
 
             return (
               <div
