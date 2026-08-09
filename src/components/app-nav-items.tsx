@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserRound } from "lucide-react";
+import { UserRound, Home, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [{ href: "/profile", label: "Perfil", icon: UserRound }];
+const NAV_LINKS = [
+  { href: "/", label: "Inicio", icon: Home },
+  { href: "/envivo", label: "Entrevistas en Vivo", icon: Radio },
+  { href: "/profile", label: "Perfil", icon: UserRound },
+];
 
 export function AppNavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
