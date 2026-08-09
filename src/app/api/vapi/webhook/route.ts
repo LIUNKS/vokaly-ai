@@ -138,29 +138,15 @@ export async function POST(req: Request) {
           }
         }
 
-        // fan-out a Portal de cada chunk (parcial + final) para que los
-        // espectadores vean la transcripción en tiempo real, no solo al
-        // cerrar el turno — el cliente decide qué mostrar como línea "en
-        // curso" (último parcial) vs. historial fijo (final).
-        // Canal separado del chat (`${sessionId}:transcript`) — los
-        // parciales llegan varias veces por segundo y saturarían la ventana
-        // de historial (50 msgs) compartida con chat/reacciones
-        if (sessionId && payloadSource?.transcript) {
+        // fan-out a Portal solo del turno cerrado (final) — evita saturar el
+        // canal (y su ventana de historial) con updates parciales por palabra
+        if (sessionId && payloadSource?.transcriptType === "final" && payloadSource?.transcript && !mockMode) {
           try {
-            await portalClient.channel(`${sessionId}:transcript`).send({
-              content: {
-                role: payloadSource.role,
-                transcript: payloadSource.transcript,
-                transcriptType: payloadSource.transcriptType,
-              },
+            await portalClient.channel(sessionId).send({
+              content: { role: payloadSource.role, transcript: payloadSource.transcript },
             });
-          } catch (portalErr: any) {
-            console.error(`[Vapi Webhook] Error publicando transcript en Portal:`, {
-              code: portalErr?.code,
-              reason: portalErr?.reason,
-              message: portalErr?.message,
-              stack: portalErr?.stack,
-            });
+          } catch (portalErr) {
+            console.error(`[Vapi Webhook] Error publicando transcript en Portal:`, portalErr);
           }
         }
 
