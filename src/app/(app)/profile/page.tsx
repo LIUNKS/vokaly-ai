@@ -57,6 +57,26 @@ export default async function ProfilePage({
       <CardContent>
         <form action={saveProfile} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
+            <Label htmlFor="fullName">Nombre completo</Label>
+            <Input
+              id="fullName"
+              name="fullName"
+              required
+              defaultValue={profile?.fullName ?? ""}
+              placeholder="Jane Doe"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="nickname">Apodo</Label>
+            <Input
+              id="nickname"
+              name="nickname"
+              required
+              defaultValue={profile?.nickname ?? ""}
+              placeholder="Usado en salas de chat"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
             <Label htmlFor="careerPath">Especialidad</Label>
             <Select
               name="careerPath"
