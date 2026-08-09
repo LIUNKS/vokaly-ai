@@ -236,12 +236,11 @@ export async function updateSessionTranscriptAction(
 
     if (Object.keys(updates).length > 0) {
       await db.update(sessions).set(updates).where(eq(sessions.id, sessionId));
-      console.log(`[Session Actions] Sesión ${sessionId} vinculada con transcripción en DB.`);
     }
 
     return { success: true };
   } catch (error) {
-    console.error(`[Session Actions] Error vinculando transcripción a sesión ${sessionId}:`, error);
+    console.error(`[Session Actions] Error al vincular transcripción:`, error);
     return { success: false, error: String(error) };
   }
 }

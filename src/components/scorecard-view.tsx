@@ -34,6 +34,7 @@ interface ScorecardViewProps {
   trackName?: string;
   seniority?: string;
   concludedAt?: string | Date | null;
+  transcript?: string | null;
 }
 
 export function ScorecardView({
@@ -41,6 +42,7 @@ export function ScorecardView({
   trackName = "Entrevista Técnica",
   seniority = "Senior",
   concludedAt,
+  transcript,
 }: ScorecardViewProps) {
   // Fallback si scorecard es nulo
   const data: ScorecardData = scorecard || {
@@ -203,6 +205,23 @@ export function ScorecardView({
               <p className="text-muted-foreground italic leading-relaxed">
                 "{data.executiveSummary}"
               </p>
+            </div>
+          )}
+
+          {/* Transcripción de la Sesión */}
+          {transcript && transcript.trim().length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-xs">
+              <div className="font-semibold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <MessageSquare className="size-3.5 text-primary" /> Transcripción de la Sesión
+                </span>
+                <Badge variant="secondary" className="text-[10px]">
+                  Completa
+                </Badge>
+              </div>
+              <div className="max-h-60 overflow-y-auto rounded-xl bg-muted/50 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-muted-foreground border border-border/50">
+                {transcript}
+              </div>
             </div>
           )}
         </CardContent>

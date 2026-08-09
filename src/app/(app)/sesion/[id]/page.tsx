@@ -43,6 +43,7 @@ export default function SesionEnVivoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scorecardData, setScorecardData] = useState<any | null>(null);
+  const [transcript, setTranscript] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
   const activeTrack = TRACKS.find((t) => t.slug === realTrackSlug) || TRACKS[0];
@@ -50,6 +51,7 @@ export default function SesionEnVivoPage() {
   const vapiRef = useRef<Vapi | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dbSessionIdRef = useRef<string | null>(null);
+  const liveTranscriptLinesRef = useRef<string[]>([]);
 
   // 1. Recuperar sesión en DB mediante getSessionAction
   useEffect(() => {
@@ -145,6 +147,7 @@ export default function SesionEnVivoPage() {
 
       if (data.success) {
         if (data.transcript && typeof data.transcript === "string" && data.transcript.trim().length > 0) {
+          setTranscript(data.transcript);
           if (activeSessionId) {
             await updateSessionTranscriptAction(activeSessionId, data.callId, data.transcript);
           }
@@ -178,21 +181,52 @@ export default function SesionEnVivoPage() {
         }
       };
 
+      const saveCapturedLiveTranscript = async () => {
+        if (liveTranscriptLinesRef.current.length > 0 && dbSessionIdRef.current) {
+          const fullLiveText = liveTranscriptLinesRef.current.join("\n");
+          setTranscript(fullLiveText);
+          await updateSessionTranscriptAction(dbSessionIdRef.current, undefined, fullLiveText);
+        }
+      };
+
       const onCallEnd = () => {
         setEstado("concluida");
         setIsSpeaking(false);
         setSpeakerRole(null);
         stopTimer();
+
         if (dbSessionIdRef.current) {
           updateSessionStateAction(dbSessionIdRef.current, "concluida");
         }
-        // Guardar transcripción en la BD silenciosamente
+
+        saveCapturedLiveTranscript();
+
         setTimeout(() => {
           loadAndSyncTranscript();
         }, 1200);
       };
 
       const onMessage = (message: any) => {
+        // Capturar transcripción en tiempo real emitida por el Web SDK de Vapi
+        if (message?.type === "transcript" || message?.transcript) {
+          const role = (message.role || message.speaker) === "user" ? "Candidato" : "Asistente";
+          const text = message.transcript || message.text;
+          const transcriptType = message.transcriptType || "final";
+
+          if (text && typeof text === "string" && text.trim().length > 0) {
+            if (transcriptType === "final") {
+              const formattedLine = `${role}: ${text.trim()}`;
+              liveTranscriptLinesRef.current.push(formattedLine);
+              const combinedText = liveTranscriptLinesRef.current.join("\n");
+              setTranscript(combinedText);
+
+              if (dbSessionIdRef.current) {
+                updateSessionTranscriptAction(dbSessionIdRef.current, undefined, combinedText);
+              }
+            }
+          }
+        }
+
         if (message?.type === "call-ended" || message?.endedReason) {
           const reason = message.endedReason;
           if (reason === "silence-timed-out") {
@@ -204,6 +238,7 @@ export default function SesionEnVivoPage() {
             if (dbSessionIdRef.current) {
               updateSessionStateAction(dbSessionIdRef.current, "concluida");
             }
+            saveCapturedLiveTranscript();
           }
         }
       };
@@ -518,6 +553,7 @@ export default function SesionEnVivoPage() {
               scorecard={scorecardData}
               trackName={activeTrack.name}
               seniority={seniority}
+              transcript={transcript}
             />
           </div>
         )}

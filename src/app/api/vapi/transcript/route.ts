@@ -44,7 +44,7 @@ export async function GET(req: Request) {
             }
           }
         } catch (dbErr) {
-          console.warn("[/api/vapi/transcript] Error de lectura DB:", dbErr);
+          console.error("[Transcript API] Error consultando DB:", dbErr);
         }
       }
     }
@@ -75,6 +75,21 @@ export async function GET(req: Request) {
       ? vapiPrivateKey
       : `Bearer ${vapiPrivateKey}`;
 
+    // Helper para extraer y formatear la transcripción limpiamente
+    const formatTranscript = (callObj: any): string | null => {
+      let raw = callObj.transcript || callObj.artifact?.transcript;
+      if (!raw && Array.isArray(callObj.artifact?.messages)) {
+        raw = callObj.artifact.messages
+          .filter((m: any) => m && (m.role || m.speaker) && (m.message || m.content || m.text))
+          .map((m: any) => `${(m.role || m.speaker) === "user" ? "Candidato" : "Asistente"}: ${m.message || m.content || m.text}`)
+          .join("\n");
+      }
+      if (typeof raw === "string" && raw.trim().length > 0) {
+        return raw.trim();
+      }
+      return null;
+    };
+
     // 2. Si tenemos el vapiCallId específico guardado para esta sesión
     if (targetCallId) {
       const response = await fetch(`https://api.vapi.ai/call/${targetCallId}`, {
@@ -86,8 +101,19 @@ export async function GET(req: Request) {
 
       if (response.ok) {
         const callData = await response.json();
-        const rawTranscript = callData.transcript || callData.artifact?.transcript || null;
-        const transcript = rawTranscript && rawTranscript.trim().length > 0 ? rawTranscript : null;
+        const transcript = formatTranscript(callData);
+
+        // Si obtuvimos transcripción y tenemos sessionId, actualizar DB para persistencia
+        if (transcript && sessionId) {
+          try {
+            await db
+              .update(sessions)
+              .set({ transcript, vapiCallId: callData.id })
+              .where(eq(sessions.id, sessionId));
+          } catch (dbErr) {
+            console.error("[Transcript API] Error persistiendo transcripción en DB:", dbErr);
+          }
+        }
 
         return NextResponse.json({
           success: true,
@@ -114,18 +140,30 @@ export async function GET(req: Request) {
       if (listResponse.ok) {
         const calls = await listResponse.json();
         if (Array.isArray(calls) && calls.length > 0) {
-          // Buscar llamada que tenga el sessionId correspondiente en sus variables o metadatos
           const matchingCall = calls.find((c: any) => {
             const varSessionId =
+              c.metadata?.sessionId ||
+              c.call?.metadata?.sessionId ||
               c.assistantOverrides?.variableValues?.sessionId ||
+              c.assistant?.variableValues?.sessionId ||
               c.variableValues?.sessionId ||
-              c.metadata?.sessionId;
+              c.assistant?.metadata?.sessionId;
             return varSessionId === sessionId;
           });
 
           if (matchingCall) {
-            const rawTranscript = matchingCall.transcript || matchingCall.artifact?.transcript || null;
-            const transcript = rawTranscript && rawTranscript.trim().length > 0 ? rawTranscript : null;
+            const transcript = formatTranscript(matchingCall);
+
+            if (transcript) {
+              try {
+                await db
+                  .update(sessions)
+                  .set({ transcript, vapiCallId: matchingCall.id })
+                  .where(eq(sessions.id, sessionId));
+              } catch (dbErr) {
+                console.error("[Transcript API] Error vinculando llamada encontrada a DB:", dbErr);
+              }
+            }
 
             return NextResponse.json({
               success: true,
@@ -142,7 +180,6 @@ export async function GET(req: Request) {
       }
     }
 
-    // Si la sesión no tiene llamada o texto asignado todavía, retornar transcript: null
     return NextResponse.json({
       success: true,
       sessionId,
@@ -151,7 +188,7 @@ export async function GET(req: Request) {
       transcript: null,
     });
   } catch (error: any) {
-    console.error("[Vapi Transcript API Error]:", error);
+    console.error("[Transcript API Error]:", error);
     return NextResponse.json(
       { success: false, error: error?.message || "Error al obtener transcripción" },
       { status: 500 }

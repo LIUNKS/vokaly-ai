@@ -26,110 +26,136 @@ function isMockMode(): boolean {
  * - call-started: 'configurando' ➔ 'en_vivo'
  * - end-of-call-report: 'en_vivo' ➔ 'concluida' (y dispara Scorecard gen)
  */
+function extractTranscriptFromPayload(raw: any): string | null {
+  if (!raw) return null;
+  let text =
+    raw.artifact?.transcript ||
+    raw.transcript ||
+    raw.call?.transcript ||
+    raw.call?.artifact?.transcript;
+
+  if (typeof text === "string" && text.trim().length > 0) {
+    return text.trim();
+  }
+
+  // Fallback: Si no hay string directo pero hay arreglo de mensajes en artifact
+  const messages = raw.artifact?.messages || raw.call?.artifact?.messages || raw.messages;
+  if (Array.isArray(messages) && messages.length > 0) {
+    const formatted = messages
+      .filter((m: any) => m && (m.role || m.speaker) && (m.message || m.content || m.text))
+      .map((m: any) => {
+        const role = (m.role || m.speaker) === "user" ? "Candidato" : "Asistente";
+        const content = m.message || m.content || m.text;
+        return `${role}: ${content}`;
+      })
+      .join("\n");
+    if (formatted.trim().length > 0) return formatted.trim();
+  }
+
+  return null;
+}
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.json();
-
-    // Vapi desenvuelve el evento dentro de rawBody.message o rawBody directamente
     const payloadSource = rawBody?.message || rawBody;
 
     // 1. Validar el payload mediante Zod (Trust Boundary)
     const parseResult = VapiWebhookPayloadSchema.safeParse(payloadSource);
+    const payload = parseResult.success ? parseResult.data : payloadSource;
 
-    if (!parseResult.success) {
-      console.error("[Vapi Webhook] Payload no coincide con schema, retornando OK para no colgar llamada:", parseResult.error.format());
-      return NextResponse.json(
-        { success: true, message: "Webhook recibido pero payload ignorado suavemente" },
-        { status: 200 }
-      );
-    }
+    // Extracción de sessionId contemplando las variantes de Vapi
+    const sessionId =
+      payloadSource?.metadata?.sessionId ||
+      payloadSource?.call?.metadata?.sessionId ||
+      payloadSource?.assistantOverrides?.variableValues?.sessionId ||
+      payloadSource?.call?.assistantOverrides?.variableValues?.sessionId ||
+      payloadSource?.variableValues?.sessionId ||
+      payload?.metadata?.sessionId ||
+      null;
 
-    const payload = parseResult.data;
-    const sessionId = payload.metadata?.sessionId;
+    const vapiCallId = payloadSource?.call?.id || payloadSource?.id || null;
+    const eventType = payloadSource?.type || payload?.type;
     const mockMode = isMockMode();
 
-    console.log(`[Vapi Webhook] Recibido evento '${payload.type}' ${sessionId ? `para sesión: ${sessionId}` : ""}`);
-
     // 2. Procesar según el tipo de evento
-    switch (payload.type) {
+    switch (eventType) {
       case "call-started": {
         if (mockMode) {
-          console.log(`[Vapi Webhook] [MOCK MODE] Simulando actualización de sesión ${sessionId} ➔ state: 'en_vivo'`);
           return NextResponse.json({
             success: true,
-            message: "Webhook 'call-started' procesado exitosamente (Mock Mode)",
+            message: "Webhook 'call-started' procesado (Mock Mode)",
             mode: "mock",
-            sessionId: sessionId || null,
+            sessionId,
           });
         }
 
         if (sessionId) {
           try {
-            // Guardia: Ignorar si la sesión ya está en 'en_vivo' o 'concluida'
             const existing = await db
               .select({ state: sessions.state })
               .from(sessions)
               .where(eq(sessions.id, sessionId))
               .limit(1);
 
-            if (existing.length > 0 && (existing[0].state === "en_vivo" || existing[0].state === "concluida")) {
-              console.log(`[Vapi Webhook] Sesión ${sessionId} ya está en estado '${existing[0].state}'. Ignorando idempotentemente.`);
-            } else {
-            const vapiCallId = payload.call?.id;
-            const updatePayload: Record<string, any> = { state: "en_vivo" };
-            if (vapiCallId) updatePayload.vapiCallId = vapiCallId;
+            if (existing.length === 0 || existing[0].state === "configurando") {
+              const updatePayload: Record<string, any> = { state: "en_vivo" };
+              if (vapiCallId) updatePayload.vapiCallId = vapiCallId;
 
-            await db
-              .update(sessions)
-              .set(updatePayload)
-              .where(eq(sessions.id, sessionId));
-            console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'en_vivo' en DB${vapiCallId ? ` (vapiCallId: ${vapiCallId})` : ''}.`);
+              await db
+                .update(sessions)
+                .set(updatePayload)
+                .where(eq(sessions.id, sessionId));
             }
           } catch (dbError) {
-            console.error(`[Vapi Webhook] Error operando en DB, fallback a MOCK:`, dbError);
-            return NextResponse.json({
-              success: true,
-              message: "Webhook 'call-started' procesado (DB Error Fallback)",
-              mode: "mock",
-              sessionId: sessionId || null,
-            });
+            console.error(`[Vapi Webhook] Error DB en 'call-started':`, dbError);
           }
         }
 
         return NextResponse.json({
           success: true,
           message: "Webhook 'call-started' procesado exitosamente",
-          mode: "db",
-          sessionId: sessionId || null,
+          sessionId,
         });
       }
 
       case "transcript": {
-        console.log(`[Vapi Webhook] Transcripción parcial recibida para llamada ${payload.call?.id}`);
+        const liveTranscript = extractTranscriptFromPayload(payloadSource);
+
+        if (sessionId && liveTranscript && !mockMode) {
+          try {
+            const updatePayload: Record<string, any> = { transcript: liveTranscript };
+            if (vapiCallId) updatePayload.vapiCallId = vapiCallId;
+
+            await db
+              .update(sessions)
+              .set(updatePayload)
+              .where(eq(sessions.id, sessionId));
+          } catch (dbErr) {
+            console.error(`[Vapi Webhook] Error DB guardando transcripción en vivo:`, dbErr);
+          }
+        }
+
         return NextResponse.json({
           success: true,
           message: "Webhook 'transcript' procesado exitosamente",
-          mode: mockMode ? "mock" : "db",
-          sessionId: sessionId || null,
+          sessionId,
         });
       }
 
       case "end-of-call-report": {
         if (mockMode) {
-          console.log(`[Vapi Webhook] [MOCK MODE] Simulando actualización de sesión ${sessionId} ➔ state: 'concluida', concludedAt: now()`);
           return NextResponse.json({
             success: true,
-            message: "Webhook 'end-of-call-report' procesado exitosamente (Mock Mode)",
-            mode: "mock",
-            sessionId: sessionId || null,
+            message: "Webhook 'end-of-call-report' (Mock Mode)",
+            sessionId,
           });
         }
 
+        const fullTranscript = extractTranscriptFromPayload(payloadSource);
+
         if (sessionId) {
           try {
-            const vapiCallId = payload.call?.id;
-            const fullTranscript = (payload as any).artifact?.transcript || (payload as any).transcript;
-            
             const updatePayload: Record<string, any> = {
               state: "concluida",
               concludedAt: new Date(),
@@ -141,43 +167,29 @@ export async function POST(req: Request) {
               .update(sessions)
               .set(updatePayload)
               .where(eq(sessions.id, sessionId));
-            console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'concluida' en DB con transcripción vinculada.`);
           } catch (dbError) {
-            console.error(`[Vapi Webhook] Error operando en DB, fallback a MOCK:`, dbError);
-            return NextResponse.json({
-              success: true,
-              message: "Webhook 'end-of-call-report' procesado (DB Error Fallback)",
-              mode: "mock",
-              sessionId: sessionId || null,
-            });
+            console.error(`[Vapi Webhook] Error DB en 'end-of-call-report':`, dbError);
           }
         }
-
-        // Disparar llamada asíncrona a Vercel AI Gateway (Track A) con el transcript para generar Scorecard
-        console.log(`[Vapi Webhook] Disparando generación de Scorecard para sesión ${sessionId}...`);
 
         return NextResponse.json({
           success: true,
           message: "Webhook 'end-of-call-report' procesado exitosamente",
-          mode: "db",
-          sessionId: sessionId || null,
+          sessionId,
         });
       }
 
       default:
-        console.log(`[Vapi Webhook] Evento secundario '${payload.type}' procesado suavemente.`);
         return NextResponse.json({
           success: true,
-          message: `Webhook '${payload.type}' procesado`,
-          mode: mockMode ? "mock" : "db",
-          sessionId: sessionId || null,
+          message: `Webhook '${eventType}' recibido`,
+          sessionId,
         });
     }
   } catch (error) {
-    console.error("[Vapi Webhook] Error interno procesando webhook:", error);
-    // Retornamos 200 para evitar que Vapi Server cuelgue la llamada por errores no contemplados
+    console.error("[Vapi Webhook] Error procesando webhook POST:", error);
     return NextResponse.json(
-      { success: true, message: "Webhook procesado con fallback de seguridad" },
+      { success: true, message: "Webhook error recuperado suavemente" },
       { status: 200 }
     );
   }
