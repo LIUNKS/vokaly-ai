@@ -127,7 +127,6 @@ function ChatRoom({
     pushToRecent(emoji);
 
     sendReaction({
-      ephemeral: true,
       content: {
         emoji,
         senderId: myClientId.current,
