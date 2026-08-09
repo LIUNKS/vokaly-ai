@@ -8,16 +8,20 @@ import { SessionHeader } from "./components/SessionHeader";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { CallControls } from "./components/CallControls";
 import { Clock, MessageSquare, AlertCircle } from "lucide-react";
+import { createOrGetSessionAction, updateSessionStateAction } from "../actions";
 
 export default function SesionEnVivoPage() {
   const params = useParams();
   const slugOrId = (params?.id as string) || "frontend";
 
-  // Buscar track correspondiente en src/lib/tracks.ts
-  const activeTrack = TRACKS.find((t) => t.slug === slugOrId) || TRACKS[0];
-  const sessionId = slugOrId;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
 
-  // Estados de la sesión
+  // Estados de la sesión y persistencia en DB
+  const [dbSessionId, setDbSessionId] = useState<string | null>(null);
+  const [realTrackSlug, setRealTrackSlug] = useState<string | null>(null);
+  const [seniority, setSeniority] = useState<string>("Senior");
+  const [isCandidate, setIsCandidate] = useState<boolean>(true);
+  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(isUuid);
   const [estado, setEstado] = useState<"configurando" | "en_vivo" | "concluida">("configurando");
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -27,9 +31,51 @@ export default function SesionEnVivoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Instancia Vapi ref
+  // Track activo resuelto desde la BD o la URL
+  const activeTrack = TRACKS.find((t) => t.slug === (realTrackSlug || slugOrId)) || TRACKS[0];
+
+  // Instancia Vapi ref y sessionId ref para callbacks
   const vapiRef = useRef<Vapi | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const dbSessionIdRef = useRef<string | null>(null);
+
+  // 1. Inicializar o recuperar sesión en DB
+  useEffect(() => {
+    let isMounted = true;
+    createOrGetSessionAction(slugOrId).then((res) => {
+      if (isMounted) {
+        if (res.id) {
+          setDbSessionId(res.id);
+          dbSessionIdRef.current = res.id;
+          setEstado(res.state);
+          setRealTrackSlug(res.trackSlug);
+          if (res.yearsOfExperience) {
+            setSeniority(`${res.yearsOfExperience} años`);
+          }
+          if (typeof res.isCandidate === "boolean") {
+            setIsCandidate(res.isCandidate);
+          }
+
+          // Sincronizar el reloj del espectador con la hora real de inicio en DB (createdAt)
+          if (res.state === "en_vivo") {
+            let elapsedSec = 0;
+            if (res.createdAt) {
+              elapsedSec = Math.max(
+                0,
+                Math.floor((Date.now() - new Date(res.createdAt).getTime()) / 1000)
+              );
+            }
+            setDurationSeconds(elapsedSec);
+            startTimer(elapsedSec);
+          }
+        }
+        setIsSessionLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [slugOrId]);
 
   // Inicializar Vapi Web SDK y suscribir eventos
   useEffect(() => {
@@ -50,7 +96,10 @@ export default function SesionEnVivoPage() {
         setEstado("en_vivo");
         setIsLoading(false);
         setErrorMessage(null);
-        startTimer();
+        startTimer(0);
+        if (dbSessionIdRef.current) {
+          updateSessionStateAction(dbSessionIdRef.current, "en_vivo");
+        }
       };
 
       const onCallEnd = () => {
@@ -59,14 +108,28 @@ export default function SesionEnVivoPage() {
         setIsSpeaking(false);
         setSpeakerRole(null);
         stopTimer();
+        if (dbSessionIdRef.current) {
+          updateSessionStateAction(dbSessionIdRef.current, "concluida");
+        }
       };
 
       const onMessage = (message: any) => {
         console.log("[Vapi Message Event]", message);
         if (message?.type === "call-ended" || message?.endedReason) {
-          console.warn(`[Vapi Call Ended Reason]: ${message.endedReason || "No especificado"}`);
-          if (message.endedReason && message.endedReason !== "customer-ended-call") {
-            setErrorMessage(`La llamada finalizó por Vapi. Razón: ${message.endedReason}`);
+          const reason = message.endedReason;
+          console.warn(`[Vapi Call Ended Reason]: ${reason || "No especificado"}`);
+          
+          if (reason === "silence-timed-out") {
+            setErrorMessage("ℹ️ La entrevista finalizó por inactividad/silencio prolongado (silence-timed-out).");
+            setEstado("concluida");
+            setIsSpeaking(false);
+            setSpeakerRole(null);
+            stopTimer();
+            if (dbSessionIdRef.current) {
+              updateSessionStateAction(dbSessionIdRef.current, "concluida");
+            }
+          } else if (reason && reason !== "customer-ended-call") {
+            setErrorMessage(`La llamada finalizó por Vapi. Razón: ${reason}`);
           }
         }
       };
@@ -87,8 +150,17 @@ export default function SesionEnVivoPage() {
       const onError = (e: any) => {
         console.error("[Vapi Error Event]", e);
         let msg = "Error al conectar con Vapi.";
+        const errorStr = JSON.stringify(e || {});
 
-        if (e?.type === "start-method-error" || e?.stage === "unknown" || JSON.stringify(e).includes("401")) {
+        // Ignorar cierres limpios de sesión o ejections por inactividad
+        if (errorStr.includes("ejection") || errorStr.includes("Meeting has ended") || e?.message?.includes("ejection")) {
+          console.log("[Vapi WebRTC] Desconexión de reunión habitual o finalización de Vapi (ejection).");
+          return;
+        }
+
+        if (errorStr.includes("NotAllowedError") || errorStr.includes("Permission denied") || e?.name === "NotAllowedError") {
+          msg = "🎙️ Permiso de micrófono denegado en el navegador. Haz clic en el ícono del candado/micrófono en la barra de direcciones de tu navegador, permite el acceso al micrófono y vuelve a presionar 'Iniciar Entrevista'.";
+        } else if (e?.type === "start-method-error" || e?.stage === "unknown" || errorStr.includes("401")) {
           msg = "⚠️ Error Vapi 401 (No Autorizado): La 'NEXT_PUBLIC_VAPI_PUBLIC_KEY' o el 'NEXT_PUBLIC_VAPI_ASSISTANT_ID' no coinciden o no son válidos en Vapi Dashboard (vapi.ai). Revisa que la Public Key pertenezca a la misma cuenta del Asistente.";
         } else if (typeof e === "string") {
           msg = e;
@@ -119,8 +191,9 @@ export default function SesionEnVivoPage() {
   }, []);
 
   // Timer helper
-  const startTimer = () => {
+  const startTimer = (initialSecs: number = 0) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    setDurationSeconds(initialSecs);
     timerRef.current = setInterval(() => {
       setDurationSeconds((prev) => prev + 1);
     }, 1000);
@@ -142,6 +215,36 @@ export default function SesionEnVivoPage() {
     setIsLoading(true);
     setErrorMessage(null);
 
+    const targetSessionId = dbSessionId || dbSessionIdRef.current;
+
+    // 1. Pre-verificación de permisos de micrófono para evitar cierres repentinos de WebRTC
+    if (typeof window !== "undefined" && navigator?.mediaDevices?.getUserMedia) {
+      try {
+        console.log("[MediaDevices] Solicitando permiso explícito de micrófono...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Detener los tracks de prueba inmediatamente para que Vapi los utilice
+        stream.getTracks().forEach((track) => track.stop());
+        console.log("[MediaDevices] Permiso de micrófono concedido exitosamente.");
+      } catch (micErr: any) {
+        console.warn("[MediaDevices] Error o permiso denegado:", micErr);
+        setErrorMessage(
+          "🎙️ Acceso al micrófono denegado. Haz clic en el icono de candado o micrófono en la barra de direcciones de tu navegador (arriba a la izquierda), otorga el permiso de Micrófono e intentalo de nuevo."
+        );
+        setIsLoading(false);
+        setEstado("configurando");
+        if (targetSessionId) {
+          updateSessionStateAction(targetSessionId, "configurando");
+        }
+        return;
+      }
+    }
+
+    // 2. Actualizar estado en DB localmente y en Vapi
+    setEstado("en_vivo");
+    if (targetSessionId) {
+      updateSessionStateAction(targetSessionId, "en_vivo");
+    }
+
     const vapi = vapiRef.current;
     const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
 
@@ -150,16 +253,28 @@ export default function SesionEnVivoPage() {
     if (vapi && assistantId) {
       try {
         console.log("[Vapi WebRTC] Conectando llamada WebRTC con Vapi Assistant:", assistantId);
-        setEstado("en_vivo");
         startTimer();
-        await vapi.start(assistantId);
+        await vapi.start(assistantId, {
+          variableValues: {
+            sessionId: targetSessionId || slugOrId,
+          },
+        } as any);
         console.log("[Vapi WebRTC] Petición vapi.start() enviada con éxito.");
         setIsLoading(false);
       } catch (err: any) {
         console.error("[Vapi WebRTC] Error al ejecutar vapi.start():", err);
         const detail = err?.message || String(err);
-        setErrorMessage(`Error al conectar con Vapi WebRTC: ${detail}`);
+        if (detail.includes("NotAllowedError") || detail.includes("Permission denied")) {
+          setErrorMessage(
+            "🎙️ Acceso al micrófono denegado. Otorga los permisos de micrófono en tu navegador y presiona nuevamente 'Iniciar Entrevista'."
+          );
+        } else {
+          setErrorMessage(`Error al conectar con Vapi WebRTC: ${detail}`);
+        }
         setEstado("configurando");
+        if (targetSessionId) {
+          updateSessionStateAction(targetSessionId, "configurando");
+        }
         stopTimer();
         setIsLoading(false);
       }
@@ -175,6 +290,11 @@ export default function SesionEnVivoPage() {
     setEstado("en_vivo");
     setIsLoading(false);
     startTimer();
+
+    const targetSessionId = dbSessionId || dbSessionIdRef.current;
+    if (targetSessionId) {
+      updateSessionStateAction(targetSessionId, "en_vivo");
+    }
 
     // Simular alternancia de habla (Entrevistador ➔ Candidato)
     setIsSpeaking(true);
@@ -199,6 +319,11 @@ export default function SesionEnVivoPage() {
     setIsSpeaking(false);
     setSpeakerRole(null);
     stopTimer();
+
+    const targetSessionId = dbSessionId || dbSessionIdRef.current;
+    if (targetSessionId) {
+      updateSessionStateAction(targetSessionId, "concluida");
+    }
   };
 
   const handleToggleMute = () => {
@@ -215,13 +340,23 @@ export default function SesionEnVivoPage() {
 
   return (
     <div className="flex flex-col items-center justify-between gap-6 py-2">
-      {/* 1. Header de Sesión */}
-      <SessionHeader
-        trackNombre={activeTrack.name}
-        empresaRef="Empresa de Producto SaaS"
-        seniority="Senior"
-        estado={estado}
-      />
+      {/* 1. Header de Sesión / Skeleton durante carga inicial por UUID */}
+      {isSessionLoading ? (
+        <div className="w-full p-6 rounded-2xl bg-card border border-border animate-pulse flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-6 w-40 bg-muted rounded-md" />
+            <div className="h-3 w-64 bg-muted/60 rounded-md" />
+          </div>
+          <div className="h-8 w-24 bg-muted rounded-full" />
+        </div>
+      ) : (
+        <SessionHeader
+          trackNombre={activeTrack.name}
+          empresaRef="Empresa de Producto SaaS"
+          seniority={seniority}
+          estado={estado}
+        />
+      )}
 
       {/* Alerta de Error si aplica */}
       {errorMessage && (
@@ -231,13 +366,20 @@ export default function SesionEnVivoPage() {
         </div>
       )}
 
+      {/* Indicador Modo Espectador si no es el candidato */}
+      {!isCandidate && (
+        <div className="w-full max-w-xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs text-center font-medium flex items-center justify-center gap-2">
+          <span>👀 Estás en <strong>Modo Espectador</strong> presenciando la transmisión en vivo de esta entrevista.</span>
+        </div>
+      )}
+
       {/* 2. Cuerpo Principal / Visualizador de Audio */}
       <div className="w-full flex flex-col items-center justify-center">
         <AudioVisualizer
           isSpeaking={isSpeaking}
           speakerRole={speakerRole}
           volumeLevel={volumeLevel}
-          candidatoNombre="Candidato"
+          candidatoNombre={isCandidate ? "Tú (Candidato)" : "Candidato en Vivo"}
         />
 
         {/* Info extra y Timer */}
@@ -250,29 +392,31 @@ export default function SesionEnVivoPage() {
             <span className="text-border">•</span>
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <MessageSquare className="size-3.5 text-primary" />
-              Sesión ID: {sessionId.substring(0, 8)}...
+              Sesión ID: {(dbSessionId || slugOrId).substring(0, 8)}...
             </span>
           </div>
         )}
 
-        {estado === "configurando" && (
+        {estado === "configurando" && isCandidate && (
           <div className="max-w-md text-center text-xs text-muted-foreground my-2 px-4 leading-relaxed">
             Presiona el botón a continuación para iniciar la entrevista. Asegúrate de tener tu micrófono activado y listo.
           </div>
         )}
       </div>
 
-      {/* 3. Barra Inferior de Controles */}
-      <div className="w-full">
-        <CallControls
-          estado={estado}
-          isMuted={isMuted}
-          onStartCall={handleStartCall}
-          onEndCall={handleEndCall}
-          onToggleMute={handleToggleMute}
-          isLoading={isLoading}
-        />
-      </div>
+      {/* 3. Barra Inferior de Controles (Solo visible para el Candidato) */}
+      {isCandidate && (
+        <div className="w-full">
+          <CallControls
+            estado={estado}
+            isMuted={isMuted}
+            onStartCall={handleStartCall}
+            onEndCall={handleEndCall}
+            onToggleMute={handleToggleMute}
+            isLoading={isLoading}
+          />
+        </div>
+      )}
     </div>
   );
 }
