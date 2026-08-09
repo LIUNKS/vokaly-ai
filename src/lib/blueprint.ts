@@ -46,7 +46,9 @@ Nivel de experiencia del candidato: ${candidateExperience} años — calibra dif
 ${jobDescription ? `Oferta laboral de referencia (ajusta el rol, no lo reemplaces):\n${jobDescription}` : ""}
 
 Estos son EJEMPLOS de referencia por fase — fijan tono/dificultad, no el escenario exacto. Escribe una pregunta NUEVA y distinta para cada fase, con su propio escenario/tecnología/situación concretos. Nunca repitas ni parafrasees el ejemplo:
-${track.guideQuestions.map((q) => `- [${q.phase}] focus "${q.focus}": ${q.question}`).join("\n")}`,
+${track.guideQuestions.map((q) => `- [${q.phase}] focus "${q.focus}": ${q.question}`).join("\n")}
+
+Restricciones: cada pregunta es UNA sola pregunta, nunca dos preguntas unidas por "y"/"o". El motor TTS lee el texto en voz alta, así que sin paréntesis, comas de enumeración tipo lista, símbolos ni URLs — describe todo en prosa natural.`,
   });
 
   const guion = track.guideQuestions
