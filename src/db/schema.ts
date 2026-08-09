@@ -5,6 +5,8 @@ export const users = pgTable("users", {
   id: uuid("id")
     .primaryKey()
     .references(() => authUsers.id, { onDelete: "cascade" }),
+  fullName: text("full_name"),
+  nickname: text("nickname"), // usado en salas de chat
   phone: text("phone"),
   yearsOfExperience: text("years_of_experience"), // '1' | '1+' | '2' | '2+' | '3' | '3+', validado en app
   careerPath: text("career_path"), // TrackSlug, validado en app (zod) — no enum de DB
