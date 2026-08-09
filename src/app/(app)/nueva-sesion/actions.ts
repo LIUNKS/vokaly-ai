@@ -6,9 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
 import { TRACKS } from "@/lib/tracks";
-import { generateBlueprint } from "@/lib/blueprint";
+import { generateBlueprintContent } from "@/lib/blueprint";
 
-export async function crearSesion(formData: FormData) {
+async function crearSesionRow(
+  formData: FormData,
+): Promise<{ error: string } | { id: string; blueprintContent: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,7 +21,7 @@ export async function crearSesion(formData: FormData) {
   const jobDescription = (formData.get("jobDescription") as string) || undefined;
 
   if (!TRACKS.some((t) => t.slug === trackSlug)) {
-    redirect("/nueva-sesion?error=Elige una especialidad válida");
+    return { error: "Elige una especialidad válida" } as const;
   }
 
   const [profile] = await db
@@ -28,7 +30,7 @@ export async function crearSesion(formData: FormData) {
     .where(eq(users.id, user.id));
   if (!profile?.yearsOfExperience) redirect("/profile");
 
-  const blueprintContent = await generateBlueprint({
+  const blueprintContent = await generateBlueprintContent({
     trackSlug,
     jobDescription,
     candidateExperience: profile.yearsOfExperience,
@@ -44,5 +46,33 @@ export async function crearSesion(formData: FormData) {
     })
     .returning({ id: sessions.id });
 
-  redirect(`/nueva-sesion/${session.id}`);
+  return { id: session.id, blueprintContent } as const;
+}
+
+export async function crearSesion(formData: FormData) {
+  const result = await crearSesionRow(formData);
+  if ("error" in result) {
+    redirect(`/nueva-sesion?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/nueva-sesion/${result.id}`);
+}
+
+export type CrearSesionModalState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "done"; sessionId: string; blueprintContent: string };
+
+export async function crearSesionModal(
+  _prev: CrearSesionModalState,
+  formData: FormData,
+): Promise<CrearSesionModalState> {
+  const result = await crearSesionRow(formData);
+  if ("error" in result) {
+    return { status: "error", message: result.error };
+  }
+  return {
+    status: "done",
+    sessionId: result.id,
+    blueprintContent: result.blueprintContent,
+  };
 }
