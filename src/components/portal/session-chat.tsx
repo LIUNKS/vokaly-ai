@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useChannel } from '@portalsdk/react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
+import { Users } from 'lucide-react';
 
 interface SessionChatProps {
   sessionId: string;
@@ -43,7 +44,7 @@ function ChatRoom({
   const [activeReactions, setActiveReactions] = useState<FloatingReaction[]>([]);
   const [quickEmojis, setQuickEmojis] = useState<string[]>(DEFAULT_EMOJIS);
 
-  const { messages, send } = useChannel<ChatMessage>({ channelId: sessionId });
+  const { messages, send, presence } = useChannel<ChatMessage>({ channelId: sessionId });
 
   const myClientId = useRef(Math.random().toString(36).substring(7));
   const menuRef = useRef<HTMLDivElement>(null);
@@ -163,10 +164,18 @@ function ChatRoom({
 
       {/* Historial de Chat */}
       <div className="mb-4 flex-1 overflow-y-auto space-y-2 pr-1">
-        <div className="border-b border-border pb-2 text-xs text-muted-foreground">
-          {phase === 'concluida'
-            ? 'Historial de sugerencias y chat de la sesión'
-            : `Chat en vivo (${roleLabel})`}
+        <div className="flex items-center justify-between border-b border-border pb-2 text-xs text-muted-foreground">
+          <span>
+            {phase === 'concluida'
+              ? 'Historial de sugerencias y chat de la sesión'
+              : `Chat en vivo (${roleLabel})`}
+          </span>
+          {phase !== 'concluida' && presence && (
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {presence.count}
+            </span>
+          )}
         </div>
 
         {chatMessagesOnly.length === 0 ? (
