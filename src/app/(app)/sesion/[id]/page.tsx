@@ -59,6 +59,7 @@ export default function SesionEnVivoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scorecardData, setScorecardData] = useState<any | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   const activeTrack = TRACKS.find((t) => t.slug === realTrackSlug) || TRACKS[0];
 
@@ -84,6 +85,9 @@ export default function SesionEnVivoPage() {
           setRealTrackSlug(res.trackSlug);
           if (res.yearsOfExperience) {
             setSeniority(`${res.yearsOfExperience} años`);
+          }
+          if (res.userName) {
+            setUserName(res.userName);
           }
           if (forceSpectator) {
             setIsCandidate(false);
@@ -488,7 +492,11 @@ export default function SesionEnVivoPage() {
                 sessionId={currentSessionId}
                 role={role}
                 phase={estado}
+<<<<<<< HEAD
                 userName={candidateName}
+=======
+                userName={userName || undefined}
+>>>>>>> 74cfd00 (fix(chat): pass authenticated user name to SessionChat instead of default Espectador label)
               />
             </div>
           )}
