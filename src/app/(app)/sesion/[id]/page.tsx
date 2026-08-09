@@ -601,8 +601,8 @@ export default function SesionEnVivoPage() {
               </div>
             )}
 
-            {/* 3. Barra Inferior de Controles (Solo visible para el Candidato) */}
-            {isCandidate && (
+            {/* 3. Barra Inferior de Controles (Solo visible para el Candidato cuando la sesión no ha concluido) */}
+            {isCandidate && estado !== "concluida" && (
               <div className="w-full mt-4">
                 <CallControls
                   estado={estado}

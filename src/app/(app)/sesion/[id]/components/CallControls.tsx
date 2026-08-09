@@ -24,6 +24,8 @@ export function CallControls({
   isLoading = false,
   isPreparing = false,
 }: CallControlsProps) {
+  if (estado === "concluida") return null;
+
   const isDisabled = isLoading || isPreparing;
 
   return (
