@@ -4,6 +4,7 @@ import { VapiWebhookPayloadSchema } from "@/types/vapi";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
 import { generateScorecard } from "@/lib/scorecard";
+import { portalClient } from "@/lib/portal/client";
 
 /**
  * Comprueba si el entorno debe operar en modo MOCK o si no hay base de datos disponible.
@@ -134,6 +135,18 @@ export async function POST(req: Request) {
               .where(eq(sessions.id, sessionId));
           } catch (dbErr) {
             console.error(`[Vapi Webhook] Error DB guardando transcripción en vivo:`, dbErr);
+          }
+        }
+
+        // fan-out a Portal solo del turno cerrado (final) — evita saturar el
+        // canal (y su ventana de historial) con updates parciales por palabra
+        if (sessionId && payloadSource?.transcriptType === "final" && payloadSource?.transcript && !mockMode) {
+          try {
+            await portalClient.channel(sessionId).send({
+              content: { role: payloadSource.role, transcript: payloadSource.transcript },
+            });
+          } catch (portalErr) {
+            console.error(`[Vapi Webhook] Error publicando transcript en Portal:`, portalErr);
           }
         }
 

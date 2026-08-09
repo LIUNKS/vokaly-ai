@@ -16,6 +16,8 @@ interface ChatMessage {
   sender?: string;
   emoji?: string;
   senderId?: string;
+  transcript?: string;
+  role?: 'user' | 'assistant';
 }
 
 interface FloatingReaction {
@@ -151,6 +153,7 @@ function ChatRoom({
   };
 
   const chatMessagesOnly = messages.filter((m) => m.content && m.content.text);
+  const transcriptLines = messages.filter((m) => m.content && m.content.transcript);
 
   return (
     <div className="relative flex h-[450px] flex-col rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm overflow-hidden">
@@ -172,6 +175,20 @@ function ChatRoom({
 
       {/* Historial de Chat */}
       <div className="mb-4 flex-1 overflow-y-auto space-y-2 pr-1">
+        {transcriptLines.length > 0 && (
+          <div className="mb-3 space-y-1 border-b border-border pb-3">
+            <div className="text-xs text-muted-foreground">📝 Transcripción en vivo</div>
+            {transcriptLines.map((m) => (
+              <div key={m.id} className="text-sm">
+                <span className="font-semibold text-primary">
+                  {m.content.role === 'assistant' ? 'Entrevistador' : 'Candidato'}:{' '}
+                </span>
+                <span className="text-foreground">{m.content.transcript}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="border-b border-border pb-2 text-xs text-muted-foreground">
           {phase === 'concluida'
             ? '📜 Historial de sugerencias y chat de la sesión'
