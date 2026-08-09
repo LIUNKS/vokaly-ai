@@ -378,6 +378,7 @@ export default function SesionEnVivoPage() {
           empresaRef="Empresa de Producto SaaS"
           seniority={seniority}
           estado={estado}
+          blueprintContent={blueprintContent}
         />
       )}
 
