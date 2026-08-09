@@ -274,20 +274,12 @@ function ChatRoom({
 
 export function SessionChat({ sessionId, role, phase, userName }: SessionChatProps) {
   if (phase === 'configurando') {
-    return (
-      <div className="rounded-lg border border-border bg-accent p-4 text-sm text-accent-foreground">
-        La sesión aún está en configuración. El chat se habilitará cuando inicie en vivo.
-      </div>
-    );
+    return null;
   }
 
-  if (role === 'candidate' && phase === 'en_vivo') {
-    return (
-      <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-        El candidato no tiene acceso al chat durante la sesión en vivo.
-      </div>
-    );
-  }
+if (role === 'candidate' && phase === 'en_vivo') {
+  return null;
+}
 
   return (
     <ChatRoom

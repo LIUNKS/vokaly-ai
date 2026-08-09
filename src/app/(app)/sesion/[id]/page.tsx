@@ -8,8 +8,13 @@ import { TRACKS } from "@/lib/tracks";
 import { SessionHeader } from "./components/SessionHeader";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { CallControls } from "./components/CallControls";
-import { Clock, MessageSquare, AlertCircle } from "lucide-react";
-import { getSessionAction, updateSessionStateAction } from "../actions";
+import { Clock, MessageSquare, AlertCircle, History, ArrowRight } from "lucide-react";
+import { getSessionAction, updateSessionStateAction, getSessionStateAction } from "../actions";
+import { PortalProvider } from "@portalsdk/react";
+import { portalClient } from "@/lib/portal/client";
+import { SessionChat } from "@/components/portal/session-chat";
+import { ScorecardView } from "@/components/scorecard-view";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function SesionEnVivoPage() {
   const params = useParams();
@@ -32,6 +37,7 @@ export default function SesionEnVivoPage() {
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [scorecardData, setScorecardData] = useState<any | null>(null);
 
   const activeTrack = TRACKS.find((t) => t.slug === realTrackSlug) || TRACKS[0];
 
@@ -39,7 +45,7 @@ export default function SesionEnVivoPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dbSessionIdRef = useRef<string | null>(null);
 
-  // Nunca crea la sesión acá, solo la busca — ver getSessionAction.
+  // 1. Recuperar sesión en DB mediante getSessionAction
   useEffect(() => {
     let isMounted = true;
     getSessionAction(sessionId).then((res) => {
@@ -83,12 +89,38 @@ export default function SesionEnVivoPage() {
     };
   }, [sessionId]);
 
+  // Sincronización en tiempo real del estado de la sesión para espectadores
+  useEffect(() => {
+    const targetSessionId = dbSessionId || dbSessionIdRef.current;
+    if (!targetSessionId) return;
+
+    let interval: NodeJS.Timeout | null = null;
+
+    if (estado === "en_vivo") {
+      interval = setInterval(async () => {
+        const res = await getSessionStateAction(targetSessionId);
+        if (res.state === "concluida") {
+          console.log(`[Realtime Sync] Sesión ${targetSessionId} ha finalizado para todos los espectadores.`);
+          setEstado("concluida");
+          if (res.scorecard) setScorecardData(res.scorecard);
+          stopTimer();
+        }
+      }, 3000);
+    } else if (estado === "concluida" && !scorecardData) {
+      getSessionStateAction(targetSessionId).then((res) => {
+        if (res.scorecard) setScorecardData(res.scorecard);
+      });
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [dbSessionId, estado, scorecardData]);
+
+  // Inicializar Vapi Web SDK y suscribir eventos
   useEffect(() => {
     const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY;
-    console.log("[Vapi Debug] Public Key cargada:", publicKey ? `${publicKey.substring(0, 8)}...` : "NO ENCONTRADA");
-
     if (!publicKey || publicKey === "mock-vapi-public-key" || publicKey.includes("your_vapi_public_key")) {
-      console.warn("[Vapi SDK] No se encontró una NEXT_PUBLIC_VAPI_PUBLIC_KEY válida en .env. Se usará el modo mock.");
       return;
     }
 
@@ -97,7 +129,6 @@ export default function SesionEnVivoPage() {
       vapiRef.current = vapi;
 
       const onCallStart = () => {
-        console.log("[Vapi WebRTC] Evento 'call-start' recibido de Vapi.");
         setEstado("en_vivo");
         setIsLoading(false);
         setErrorMessage(null);
@@ -108,7 +139,6 @@ export default function SesionEnVivoPage() {
       };
 
       const onCallEnd = () => {
-        console.log("[Vapi WebRTC] Evento 'call-end' recibido.");
         setEstado("concluida");
         setIsSpeaking(false);
         setSpeakerRole(null);
@@ -119,13 +149,10 @@ export default function SesionEnVivoPage() {
       };
 
       const onMessage = (message: any) => {
-        console.log("[Vapi Message Event]", message);
         if (message?.type === "call-ended" || message?.endedReason) {
           const reason = message.endedReason;
-          console.warn(`[Vapi Call Ended Reason]: ${reason || "No especificado"}`);
-
           if (reason === "silence-timed-out") {
-            setErrorMessage("ℹ️ La entrevista finalizó por inactividad/silencio prolongado (silence-timed-out).");
+            setErrorMessage("ℹ️ La entrevista finalizó por inactividad/silencio prolongado.");
             setEstado("concluida");
             setIsSpeaking(false);
             setSpeakerRole(null);
@@ -133,8 +160,6 @@ export default function SesionEnVivoPage() {
             if (dbSessionIdRef.current) {
               updateSessionStateAction(dbSessionIdRef.current, "concluida");
             }
-          } else if (reason && reason !== "customer-ended-call") {
-            setErrorMessage(`La llamada finalizó por Vapi. Razón: ${reason}`);
           }
         }
       };
@@ -153,26 +178,12 @@ export default function SesionEnVivoPage() {
       };
 
       const onError = (e: any) => {
-        console.error("[Vapi Error Event]", e);
         let msg = "Error al conectar con Vapi.";
         const errorStr = JSON.stringify(e || {});
-
-        // Ignorar cierres limpios de sesión o ejections por inactividad
-        if (errorStr.includes("ejection") || errorStr.includes("Meeting has ended") || e?.message?.includes("ejection")) {
-          console.log("[Vapi WebRTC] Desconexión de reunión habitual o finalización de Vapi (ejection).");
-          return;
+        if (errorStr.includes("ejection") || errorStr.includes("Meeting has ended")) return;
+        if (errorStr.includes("NotAllowedError") || errorStr.includes("Permission denied")) {
+          msg = "🎙️ Permiso de micrófono denegado en el navegador.";
         }
-
-        if (errorStr.includes("NotAllowedError") || errorStr.includes("Permission denied") || e?.name === "NotAllowedError") {
-          msg = "🎙️ Permiso de micrófono denegado en el navegador. Haz clic en el ícono del candado/micrófono en la barra de direcciones de tu navegador, permite el acceso al micrófono y vuelve a presionar 'Iniciar Entrevista'.";
-        } else if (e?.type === "start-method-error" || e?.stage === "unknown" || errorStr.includes("401")) {
-          msg = "⚠️ Error Vapi 401 (No Autorizado): La 'NEXT_PUBLIC_VAPI_PUBLIC_KEY' o el 'NEXT_PUBLIC_VAPI_ASSISTANT_ID' no coinciden o no son válidos en Vapi Dashboard (vapi.ai). Revisa que la Public Key pertenezca a la misma cuenta del Asistente.";
-        } else if (typeof e === "string") {
-          msg = e;
-        } else if (e?.message) {
-          msg = e.message;
-        }
-
         setErrorMessage(msg);
         setIsLoading(false);
       };
@@ -191,7 +202,7 @@ export default function SesionEnVivoPage() {
         if (timerRef.current) clearInterval(timerRef.current);
       };
     } catch (err) {
-      console.error("[Vapi SDK] Error al instanciar Vapi Client:", err);
+      console.error("[Vapi SDK] Error:", err);
     }
   }, []);
 
@@ -216,84 +227,43 @@ export default function SesionEnVivoPage() {
   const handleStartCall = async () => {
     setIsLoading(true);
     setErrorMessage(null);
-
     const targetSessionId = dbSessionId || dbSessionIdRef.current;
 
-    // Pedir permiso de mic explícito antes de vapi.start() — sin esto el WebRTC a veces se cierra solo apenas conecta.
     if (typeof window !== "undefined" && navigator?.mediaDevices?.getUserMedia) {
       try {
-        console.log("[MediaDevices] Solicitando permiso explícito de micrófono...");
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Vapi abre su propio stream — este solo era para forzar el prompt de permiso.
         stream.getTracks().forEach((track) => track.stop());
-        console.log("[MediaDevices] Permiso de micrófono concedido exitosamente.");
       } catch (micErr: any) {
-        console.warn("[MediaDevices] Error o permiso denegado:", micErr);
-        setErrorMessage(
-          "🎙️ Acceso al micrófono denegado. Haz clic en el icono de candado o micrófono en la barra de direcciones de tu navegador (arriba a la izquierda), otorga el permiso de Micrófono e intentalo de nuevo."
-        );
+        setErrorMessage("🎙️ Acceso al micrófono denegado. Otorga el permiso de micrófono e intentalo de nuevo.");
         setIsLoading(false);
         setEstado("configurando");
-        if (targetSessionId) {
-          updateSessionStateAction(targetSessionId, "configurando");
-        }
+        if (targetSessionId) updateSessionStateAction(targetSessionId, "configurando");
         return;
       }
     }
 
     setEstado("en_vivo");
-    if (targetSessionId) {
-      updateSessionStateAction(targetSessionId, "en_vivo");
-    }
+    if (targetSessionId) updateSessionStateAction(targetSessionId, "en_vivo");
 
     const vapi = vapiRef.current;
     const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
 
-    console.log("[Vapi Debug] handleStartCall invocado. Instancia vapi:", !!vapi, "assistantId:", assistantId);
-
     if (vapi && assistantId) {
       try {
-        console.log("[Vapi WebRTC] Conectando llamada WebRTC con Vapi Assistant:", assistantId);
         startTimer();
-        // Ambos ya resueltos acá (no placeholders) — el Assistant en Vapi Dashboard solo tiene
-        // {{first_message}}/{{blueprint_content}}, nada que templatizar de su lado.
-        const firstMessage = `Hola ${candidateName}, bienvenido/a a tu sesión de práctica para la posición de ${activeTrack.name} en ${activeTrack.empresaRef}. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.`;
-
         await vapi.start(assistantId, {
-          variableValues: {
-            first_message: firstMessage,
-            blueprint_content: blueprintContent,
-          },
-          metadata: {
-            sessionId: targetSessionId || sessionId,
-            candidatoId: candidateId || undefined,
-            trackSlug: realTrackSlug || sessionId,
-          },
-        });
-        console.log("[Vapi WebRTC] Petición enviada con éxito.");
+          variableValues: { sessionId: targetSessionId || sessionId },
+        } as any);
         setIsLoading(false);
       } catch (err: any) {
-        console.error("[Vapi WebRTC] Error al ejecutar vapi.start():", err);
-        const detail = err?.message || String(err);
-        if (detail.includes("NotAllowedError") || detail.includes("Permission denied")) {
-          setErrorMessage(
-            "🎙️ Acceso al micrófono denegado. Otorga los permisos de micrófono en tu navegador y presiona nuevamente 'Iniciar Entrevista'."
-          );
-        } else {
-          setErrorMessage(`Error al conectar con Vapi WebRTC: ${detail}`);
-        }
+        setErrorMessage(`Error al conectar con Vapi WebRTC: ${err?.message || String(err)}`);
         setEstado("configurando");
-        if (targetSessionId) {
-          updateSessionStateAction(targetSessionId, "configurando");
-        }
+        if (targetSessionId) updateSessionStateAction(targetSessionId, "configurando");
         stopTimer();
         setIsLoading(false);
       }
     } else {
-      console.warn("[Vapi SDK] No hay vapiRef o NEXT_PUBLIC_VAPI_ASSISTANT_ID configurado. Ejecutando llamada MOCK.");
-      setTimeout(() => {
-        startMockCall();
-      }, 500);
+      setTimeout(() => startMockCall(), 500);
     }
   };
 
@@ -301,28 +271,23 @@ export default function SesionEnVivoPage() {
     setEstado("en_vivo");
     setIsLoading(false);
     startTimer();
-
     const targetSessionId = dbSessionId || dbSessionIdRef.current;
-    if (targetSessionId) {
-      updateSessionStateAction(targetSessionId, "en_vivo");
-    }
-
+    if (targetSessionId) updateSessionStateAction(targetSessionId, "en_vivo");
     setIsSpeaking(true);
     setSpeakerRole("assistant");
     setVolumeLevel(0.4);
-
     setTimeout(() => {
       setSpeakerRole("user");
       setVolumeLevel(0.6);
     }, 3000);
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     if (vapiRef.current) {
       try {
         vapiRef.current.stop();
       } catch (err) {
-        console.warn("[Vapi] Error al detener la llamada o llamada no activa:", err);
+        console.warn("[Vapi] Error al detener llamada:", err);
       }
     }
     setEstado("concluida");
@@ -332,7 +297,9 @@ export default function SesionEnVivoPage() {
 
     const targetSessionId = dbSessionId || dbSessionIdRef.current;
     if (targetSessionId) {
-      updateSessionStateAction(targetSessionId, "concluida");
+      await updateSessionStateAction(targetSessionId, "concluida");
+      const res = await getSessionStateAction(targetSessionId);
+      if (res.scorecard) setScorecardData(res.scorecard);
     }
   };
 
@@ -342,7 +309,7 @@ export default function SesionEnVivoPage() {
       try {
         vapiRef.current.setMuted(newMuted);
       } catch (err) {
-        console.warn("[Vapi] Llamada WebRTC no activa aún. Alternando estado de silencio localmente:", err);
+        console.warn("[Vapi] Error al cambiar silencio:", err);
       }
     }
     setIsMuted(newMuted);
@@ -362,80 +329,138 @@ export default function SesionEnVivoPage() {
     );
   }
 
+  const role = isCandidate ? "candidate" : "spectator";
+  const hideChat = role === "candidate" && estado === "en_vivo";
+  const centeredStage = estado === "configurando" || hideChat;
+  const currentSessionId = dbSessionId || sessionId;
+
   return (
-    <div className="flex flex-col items-center justify-between gap-6 py-2">
-      {isSessionLoading ? (
-        <div className="w-full p-6 rounded-2xl bg-card border border-border animate-pulse flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-6 w-40 bg-muted rounded-md" />
-            <div className="h-3 w-64 bg-muted/60 rounded-md" />
+    <PortalProvider client={portalClient}>
+      <div className="flex flex-col gap-6 py-2">
+        {/* 1. Header de Sesión / Skeleton durante carga inicial por UUID */}
+        {isSessionLoading ? (
+          <div className="w-full p-6 rounded-2xl bg-card border border-border animate-pulse flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-6 w-40 bg-muted rounded-md" />
+              <div className="h-3 w-64 bg-muted/60 rounded-md" />
+            </div>
+            <div className="h-8 w-24 bg-muted rounded-full" />
           </div>
-          <div className="h-8 w-24 bg-muted rounded-full" />
-        </div>
-      ) : (
-        <SessionHeader
-          trackNombre={activeTrack.name}
-          empresaRef={activeTrack.empresaRef}
-          seniority={seniority}
-          estado={estado}
-          blueprintContent={blueprintContent}
-        />
-      )}
+        ) : (
+          <SessionHeader
+            trackNombre={activeTrack.name}
+            empresaRef={activeTrack.empresaRef}
+            seniority={seniority}
+            estado={estado}
+            blueprintContent={blueprintContent}
+          />
+        )}
 
-      {errorMessage && (
-        <div className="w-full max-w-xl mx-auto p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-xs flex items-center gap-2">
-          <AlertCircle className="size-4 shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {!isCandidate && (
-        <div className="w-full max-w-xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs text-center font-medium flex items-center justify-center gap-2">
-          <span>👀 Estás en <strong>Modo Espectador</strong> presenciando la transmisión en vivo de esta entrevista.</span>
-        </div>
-      )}
-
-      <div className="w-full flex flex-col items-center justify-center">
-        <AudioVisualizer
-          isSpeaking={isSpeaking}
-          speakerRole={speakerRole}
-          volumeLevel={volumeLevel}
-          candidatoNombre={isCandidate ? "Tú (Candidato)" : "Candidato en Vivo"}
-        />
-
-        {estado === "en_vivo" && (
-          <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono bg-card px-4 py-2 rounded-full border border-border my-2 shadow-xs">
-            <span className="flex items-center gap-1.5 text-foreground font-medium">
-              <Clock className="size-3.5 text-primary" />
-              {formatTime(durationSeconds)}
-            </span>
-            <span className="text-border">•</span>
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <MessageSquare className="size-3.5 text-primary" />
-              Sesión ID: {(dbSessionId || sessionId).substring(0, 8)}...
-            </span>
+        {/* Alerta de Error si aplica */}
+        {errorMessage && (
+          <div className="w-full max-w-xl mx-auto p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-xs flex items-center gap-2">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
-        {estado === "configurando" && isCandidate && (
-          <div className="max-w-md text-center text-xs text-muted-foreground my-2 px-4 leading-relaxed">
-            Presiona el botón a continuación para iniciar la entrevista. Asegúrate de tener tu micrófono activado y listo.
+        {/* Indicador Modo Espectador si no es el candidato */}
+        {!isCandidate && (
+          <div className="w-full max-w-xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs text-center font-medium flex items-center justify-center gap-2">
+            <span>👀 Estás en <strong>Modo Espectador</strong> presenciando la transmisión en vivo de esta entrevista.</span>
+          </div>
+        )}
+
+        {/* 2. Cuerpo Principal / Visualizador de Audio y Chat Side-by-Side */}
+        <div
+          className={
+            centeredStage
+              ? "w-full flex flex-col items-center justify-center"
+              : "grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
+          }
+        >
+          <div className="w-full flex flex-col items-center justify-center">
+            <AudioVisualizer
+              isSpeaking={isSpeaking}
+              speakerRole={speakerRole}
+              volumeLevel={volumeLevel}
+              candidatoNombre={isCandidate ? "Tú (Candidato)" : candidateName}
+            />
+
+            {/* Info extra y Timer */}
+            {estado === "en_vivo" && (
+              <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono bg-card px-4 py-2 rounded-full border border-border my-2 shadow-xs">
+                <span className="flex items-center gap-1.5 text-foreground font-medium">
+                  <Clock className="size-3.5 text-primary" />
+                  {formatTime(durationSeconds)}
+                </span>
+                <span className="text-border">•</span>
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <MessageSquare className="size-3.5 text-primary" />
+                  Sesión ID: {currentSessionId.substring(0, 8)}...
+                </span>
+              </div>
+            )}
+
+            {estado === "configurando" && isCandidate && (
+              <div className="max-w-md text-center text-xs text-muted-foreground my-2 px-4 leading-relaxed">
+                Presiona el botón a continuación para iniciar la entrevista. Asegúrate de tener tu micrófono activado y listo.
+              </div>
+            )}
+
+            {/* 3. Barra Inferior de Controles (Solo visible para el Candidato) */}
+            {isCandidate && (
+              <div className="w-full mt-4">
+                <CallControls
+                  estado={estado}
+                  isMuted={isMuted}
+                  onStartCall={handleStartCall}
+                  onEndCall={handleEndCall}
+                  onToggleMute={handleToggleMute}
+                  isLoading={isLoading}
+                />
+              </div>
+            )}
+          </div>
+
+          {!centeredStage && (
+            <div className="w-full">
+              <SessionChat
+                sessionId={currentSessionId}
+                role={role}
+                phase={estado}
+                userName={candidateName}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 4. Scorecard de Evaluación al concluir la sesión */}
+        {estado === "concluida" && (
+          <div className="w-full max-w-4xl mx-auto space-y-4 pt-4 border-t border-border">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <History className="size-5 text-primary" />
+                Resultado de Evaluación de Sesión
+              </h3>
+              {isCandidate && (
+                <Link
+                  href="/historial"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Ver Todo mi Historial <ArrowRight className="ml-1.5 size-3.5" />
+                </Link>
+              )}
+            </div>
+
+            <ScorecardView
+              scorecard={scorecardData}
+              trackName={activeTrack.name}
+              seniority={seniority}
+            />
           </div>
         )}
       </div>
-
-      {isCandidate && (
-        <div className="w-full">
-          <CallControls
-            estado={estado}
-            isMuted={isMuted}
-            onStartCall={handleStartCall}
-            onEndCall={handleEndCall}
-            onToggleMute={handleToggleMute}
-            isLoading={isLoading}
-          />
-        </div>
-      )}
-    </div>
+    </PortalProvider>
   );
 }
