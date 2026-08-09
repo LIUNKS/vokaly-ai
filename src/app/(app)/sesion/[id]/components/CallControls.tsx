@@ -61,13 +61,6 @@ export function CallControls({
           </>
         )}
 
-        {estado === "concluida" && (
-          <div className="text-center py-2">
-            <p className="text-xs text-muted-foreground">
-              La sesión ha concluido. El Scorecard ha sido generado.
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

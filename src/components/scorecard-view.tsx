@@ -10,6 +10,7 @@ import {
   BarChart2,
   MessageSquare,
   BookOpen,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,31 +45,27 @@ export function ScorecardView({
   concludedAt,
   transcript,
 }: ScorecardViewProps) {
-  // Fallback si scorecard es nulo
-  const data: ScorecardData = scorecard || {
-    globalScore: 86,
-    technicalKnowledge: {
-      rating: 9,
-      feedback: `Demostró sólidos conocimientos conceptuales y prácticos sobre el track.`,
-    },
-    answerStructure: {
-      rating: 8,
-      feedback: "Respuestas estructuradas adecuadamente utilizando la metodología STAR.",
-    },
-    communicationSkill: {
-      rating: 9,
-      feedback: "Fluidez verbal excelente, vocabulario técnico adecuado y conciso.",
-    },
-    strengths: [
-      "Dominio técnico destacado en la arquitectura del track.",
-      "Capacidad de explicar compensaciones técnicas claramente.",
-    ],
-    areasToImprove: [
-      "Profundizar más en métricas cuantitativas al describir optimizaciones.",
-    ],
-    executiveSummary: `El candidato superó los criterios de evaluación para el nivel ${seniority}. Demuestra alta preparación práctica.`,
-  };
+  if (!scorecard) {
+    return (
+      <Card
+        role="status"
+        aria-live="polite"
+        className="w-full border border-border bg-gradient-to-br from-card via-card to-muted shadow-md"
+      >
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Generando tu evaluación…</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Estamos analizando la entrevista para {trackName}. Esto puede tardar unos segundos, la página se actualiza sola.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
+  const data: ScorecardData = scorecard;
   const score = data.globalScore ?? 86;
   const formattedDate = concludedAt
     ? new Date(concludedAt).toLocaleDateString("es-ES", {

@@ -12,7 +12,6 @@ import { Clock, MessageSquare, AlertCircle, History, ArrowRight } from "lucide-r
 import {
   getSessionAction,
   updateSessionStateAction,
-  getSessionStateAction,
   updateSessionTranscriptAction,
 } from "../actions";
 import { PortalProvider } from "@portalsdk/react";
@@ -111,7 +110,7 @@ export default function SesionEnVivoPage() {
 
     if (estado === "en_vivo") {
       interval = setInterval(async () => {
-        const res = await getSessionStateAction(targetSessionId);
+        const res = await fetchSessionState(targetSessionId);
         if (res.state === "concluida") {
           console.log(`[Realtime Sync] Sesión ${targetSessionId} ha finalizado para todos los espectadores.`);
           setEstado("concluida");
@@ -121,15 +120,24 @@ export default function SesionEnVivoPage() {
         }
       }, 3000);
     } else if (estado === "concluida" && !scorecardData) {
-      getSessionStateAction(targetSessionId).then((res) => {
+      // Scorecard se genera async en el webhook tras recibir el transcript — reintenta hasta que aparezca
+      interval = setInterval(async () => {
+        const res = await fetchSessionState(targetSessionId);
         if (res.scorecard) setScorecardData(res.scorecard);
-      });
+      }, 3000);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [dbSessionId, estado, scorecardData]);
+
+  // Route Handler en vez de Server Action — usada en polling, evitar el
+  // re-render de Server Components que dispara una Server Action en cada tick
+  const fetchSessionState = async (targetSessionId: string) => {
+    const res = await fetch(`/api/sessions/${targetSessionId}/state`);
+    return (await res.json()) as { state: "configurando" | "en_vivo" | "concluida" | null; scorecard: any | null };
+  };
 
   // Función parametrizada para obtener y guardar la transcripción + vapiCallId en la BD
   const loadAndSyncTranscript = async (targetSessionId?: string, targetCallId?: string) => {
@@ -393,7 +401,7 @@ export default function SesionEnVivoPage() {
     const targetSessionId = dbSessionId || dbSessionIdRef.current;
     if (targetSessionId) {
       await updateSessionStateAction(targetSessionId, "concluida");
-      const res = await getSessionStateAction(targetSessionId);
+      const res = await fetchSessionState(targetSessionId);
       if (res.scorecard) setScorecardData(res.scorecard);
       loadAndSyncTranscript(targetSessionId);
     }

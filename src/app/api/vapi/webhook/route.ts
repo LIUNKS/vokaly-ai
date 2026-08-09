@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { VapiWebhookPayloadSchema } from "@/types/vapi";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
+import { generateScorecard } from "@/lib/scorecard";
 
 /**
  * Comprueba si el entorno debe operar en modo MOCK o si no hay base de datos disponible.
@@ -167,6 +168,33 @@ export async function POST(req: Request) {
               .update(sessions)
               .set(updatePayload)
               .where(eq(sessions.id, sessionId));
+
+            console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'concluida' en DB con transcripción vinculada.`);
+
+            if (fullTranscript) {
+              const [session] = await db
+                .select({ trackSlug: sessions.trackSlug })
+                .from(sessions)
+                .where(eq(sessions.id, sessionId))
+                .limit(1);
+
+              if (session) {
+                try {
+                  const scorecard = await generateScorecard({
+                    transcript: fullTranscript,
+                    trackSlug: session.trackSlug,
+                  });
+                  await db
+                    .update(sessions)
+                    .set({ scorecard })
+                    .where(eq(sessions.id, sessionId));
+                  console.log(`[Vapi Webhook] Scorecard generado y guardado para sesión ${sessionId}.`);
+                } catch (scorecardError) {
+                  // no bloquea la respuesta del webhook — sesión queda 'concluida' sin scorecard, se puede reintentar
+                  console.error(`[Vapi Webhook] Error generando Scorecard para sesión ${sessionId}:`, scorecardError);
+                }
+              }
+            }
           } catch (dbError) {
             console.error(`[Vapi Webhook] Error DB en 'end-of-call-report':`, dbError);
           }
