@@ -8,9 +8,3 @@ export const PortalAuthPayload = z.object({
 });
 
 export type PortalAuthPayloadType = z.infer<typeof PortalAuthPayload>;
-
-// Notificaciones que van por canal propio
-export type AppNotification =
-  | { type: 'session_started'; sessionId: string }
-  | { type: 'session_ended'; sessionId: string }
-  | { type: 'scorecard_ready'; sessionId: string };

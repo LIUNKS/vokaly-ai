@@ -35,24 +35,3 @@ export const VapiWebhookPayloadSchema = z
 
 export type VapiWebhookPayload = z.infer<typeof VapiWebhookPayloadSchema>;
 
-/**
- * El firstMessage/systemPrompt del Assistant en Vapi Dashboard son solo
- * `{{first_message}}` / `{{blueprint_content}}` — el texto ya viene resuelto
- * desde acá (blueprint.ts genera el prompt final, sin placeholders propios),
- * así el Dashboard no mantiene una plantilla en paralelo a la nuestra.
- */
-export const VapiVariableValuesSchema = z.object({
-  first_message: z.string(),
-  blueprint_content: z.string(),
-});
-
-export type VapiVariableValues = z.infer<typeof VapiVariableValuesSchema>;
-
-export const VapiSessionConfigSchema = z.object({
-  firstMessage: z.string(),
-  systemPrompt: z.string(),
-  variableValues: VapiVariableValuesSchema,
-  metadata: VapiMetadataSchema,
-});
-
-export type VapiSessionConfig = z.infer<typeof VapiSessionConfigSchema>;
