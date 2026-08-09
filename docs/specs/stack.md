@@ -15,8 +15,8 @@
 | **DB / ORM** | Supabase (Postgres) + Drizzle | schema, migraciones, queries |
 | **Auth** | Supabase Auth | login candidato / entrevistador |
 | **Storage** | Supabase Storage | copia propia de grabaciones de Vapi (retención de Vapi no garantizada) |
-| **LLM (Blueprint + Scorecard)** | Vercel AI Gateway | llamadas de structured output: track+JD → Blueprint, transcript → Scorecard |
-| **Hosting** | Vercel | sirve Next.js, pairing nativo con AI Gateway |
+| **LLM (Blueprint + Scorecard)** | [Groq](https://groq.com) (`@ai-sdk/groq`, `moonshotai/kimi-k2-instruct-0905`) | llamadas de structured output: track+JD → Blueprint, transcript → Scorecard |
+| **Hosting** | Vercel | sirve Next.js |
 | **Validación** | zod | payloads de webhook (Vapi), forms — trust boundary |
 | **Formato** | Prettier | formateo de código, config por defecto (cero config) — ESLint (`eslint-config-next`, ya instalado) no cubre estilo desde v9 |
 
@@ -39,9 +39,9 @@ Reglas de visibilidad de chat (domain.md §6.4–6.6: candidato nunca ve chat en
 ## Dos LLMs, no confundir
 
 - **Vapi** — modelo de la conversación en vivo, configurado en el dashboard de Vapi (Claude/GPT/etc).
-- **Vercel AI Gateway** — llamadas server-side propias para Blueprint y Scorecard (structured output).
+- **Groq** — llamadas server-side propias para Blueprint y Scorecard (structured output).
 
-Mismo proveedor de modelo si se quiere consistencia, pero configuración y llamada separadas.
+Distintos proveedores de modelo (Groq no tiene Claude/GPT) — no hay overlap que mantener consistente, configuración y llamada ya eran separadas.
 
 ---
 
@@ -49,8 +49,9 @@ Mismo proveedor de modelo si se quiere consistencia, pero configuración y llama
 
 - **Supabase Realtime** en vez de Portal — descartado, Portal ya era requerimiento fijo y cubre el mismo trabajo (chat, reacciones, fan-out de transcript) sin agregar una segunda pieza redundante.
 - **LiveKit / Pipecat** en vez de Vapi — más control de infra, pero más trabajo de build. Reconsiderar solo si audiencia necesita oír audio en vivo (no solo transcript) o al salir de fase demo/hackathon.
-- **Groq** para Blueprint/Scorecard — solo modelos open-weight, sin Claude/GPT. Blueprint y Scorecard son tareas de juicio (rubric-following), no latency-bound — descartado.
-- **OpenRouter** en vez de Vercel AI Gateway — mismo concepto, pero free tier rota modelos `:free` semana a semana (riesgo en demo) y no tiene pairing nativo con Vercel hosting.
+- **Vercel AI Gateway** para Blueprint/Scorecard — probado primero (pairing nativo con Vercel, un solo endpoint multi-modelo), pero exige tarjeta de crédito en la cuenta incluso para desbloquear el free tier (`customer_verification_required`) — bloqueante para el hackathon, sin tarjeta disponible. Reconsiderar si eso deja de ser un problema.
+- **OpenRouter** en vez de Groq — mismo problema que buscábamos evitar: free tier rota modelos `:free` semana a semana (riesgo en demo). Groq tiene modelos nombrados estables (`kimi-k2-instruct-0905`) sin tarjeta.
+- **Groq solo modelos open-weight, sin Claude/GPT** — cierto, pero Blueprint/Scorecard son tareas de juicio (rubric-following) no atadas a un proveedor específico; kimi-k2 (Moonshot, MoE grande) soporta structured outputs nativo y cubre el caso.
 
 ## Pendiente / fuera de alcance hackathon
 
