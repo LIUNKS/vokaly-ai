@@ -75,11 +75,15 @@ export async function POST(req: Request) {
             if (existing.length > 0 && (existing[0].state === "en_vivo" || existing[0].state === "concluida")) {
               console.log(`[Vapi Webhook] Sesión ${sessionId} ya está en estado '${existing[0].state}'. Ignorando idempotentemente.`);
             } else {
-              await db
-                .update(sessions)
-                .set({ state: "en_vivo" })
-                .where(eq(sessions.id, sessionId));
-              console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'en_vivo' en DB.`);
+            const vapiCallId = payload.call?.id;
+            const updatePayload: Record<string, any> = { state: "en_vivo" };
+            if (vapiCallId) updatePayload.vapiCallId = vapiCallId;
+
+            await db
+              .update(sessions)
+              .set(updatePayload)
+              .where(eq(sessions.id, sessionId));
+            console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'en_vivo' en DB${vapiCallId ? ` (vapiCallId: ${vapiCallId})` : ''}.`);
             }
           } catch (dbError) {
             console.error(`[Vapi Webhook] Error operando en DB, fallback a MOCK:`, dbError);
@@ -113,7 +117,6 @@ export async function POST(req: Request) {
       case "end-of-call-report": {
         if (mockMode) {
           console.log(`[Vapi Webhook] [MOCK MODE] Simulando actualización de sesión ${sessionId} ➔ state: 'concluida', concludedAt: now()`);
-          console.log(`[Vapi Webhook] [MOCK MODE] Simulando disparo de Vercel AI Gateway para generar Scorecard para sesión ${sessionId}`);
           return NextResponse.json({
             success: true,
             message: "Webhook 'end-of-call-report' procesado exitosamente (Mock Mode)",
@@ -124,14 +127,21 @@ export async function POST(req: Request) {
 
         if (sessionId) {
           try {
+            const vapiCallId = payload.call?.id;
+            const fullTranscript = (payload as any).artifact?.transcript || (payload as any).transcript;
+            
+            const updatePayload: Record<string, any> = {
+              state: "concluida",
+              concludedAt: new Date(),
+            };
+            if (vapiCallId) updatePayload.vapiCallId = vapiCallId;
+            if (fullTranscript) updatePayload.transcript = fullTranscript;
+
             await db
               .update(sessions)
-              .set({
-                state: "concluida",
-                concludedAt: new Date(),
-              })
+              .set(updatePayload)
               .where(eq(sessions.id, sessionId));
-            console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'concluida' en DB.`);
+            console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'concluida' en DB con transcripción vinculada.`);
           } catch (dbError) {
             console.error(`[Vapi Webhook] Error operando en DB, fallback a MOCK:`, dbError);
             return NextResponse.json({

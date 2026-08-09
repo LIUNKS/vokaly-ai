@@ -23,6 +23,8 @@ export const sessions = pgTable("sessions", {
   jobDescription: text("job_description"),
   blueprintContent: text("blueprint_content"), // output AI Gateway Blueprint-gen, freeze cuando state != 'configurando'
   state: text("state").notNull().default("configurando"), // 'configurando' | 'en_vivo' | 'concluida', validado en app (zod)
+  vapiCallId: text("vapi_call_id"), // ID exacto de la llamada en Vapi API
+  transcript: text("transcript"), // Transcripción completa de la llamada de esta sesión
   scorecard: jsonb("scorecard"), // ScorecardSchema, null hasta 'concluida'
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   concludedAt: timestamp("concluded_at", { withTimezone: true }),

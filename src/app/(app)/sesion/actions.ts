@@ -17,6 +17,8 @@ export interface SessionDataResponse {
   candidateName?: string | null;
   blueprintContent?: string | null;
   userName?: string | null;
+  vapiCallId?: string | null;
+  transcript?: string | null;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -69,6 +71,8 @@ export async function getSessionAction(sessionId: string): Promise<SessionDataRe
       candidateName: u?.fullName || u?.nickname || null,
       blueprintContent: s.blueprintContent,
       userName: currentUserName,
+      vapiCallId: s.vapiCallId || null,
+      transcript: s.transcript || null,
     };
   } catch (error) {
     console.error("[Session Actions] Error al recuperar sesión en DB:", error);
@@ -148,7 +152,8 @@ export async function getUserSessionsAction(): Promise<UserSessionHistoryItem[]>
  */
 export async function updateSessionStateAction(
   sessionId: string,
-  state: "configurando" | "en_vivo" | "concluida"
+  state: "configurando" | "en_vivo" | "concluida",
+  vapiCallId?: string
 ) {
   try {
     const isUuid = UUID_RE.test(sessionId);
@@ -196,16 +201,47 @@ export async function updateSessionStateAction(
         };
       }
     }
+    if (vapiCallId) {
+      updates.vapiCallId = vapiCallId;
+    }
 
     await db
       .update(sessions)
       .set(updates)
       .where(eq(sessions.id, sessionId));
 
-    console.log(`[Session Actions] Sesión ${sessionId} actualizada con éxito en DB ➔ state: '${state}'`);
+    console.log(`[Session Actions] Sesión ${sessionId} actualizada con éxito en DB ➔ state: '${state}'${vapiCallId ? `, vapiCallId: ${vapiCallId}` : ''}`);
     return { success: true };
   } catch (error) {
     console.error(`[Session Actions] Error al actualizar estado de sesión ${sessionId}:`, error);
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
+ * Vincula el vapiCallId y la transcripción a la sesión de la base de datos.
+ */
+export async function updateSessionTranscriptAction(
+  sessionId: string,
+  vapiCallId?: string,
+  transcript?: string
+) {
+  try {
+    const isUuid = UUID_RE.test(sessionId);
+    if (!isUuid) return { success: false, reason: "not_uuid" };
+
+    const updates: Record<string, any> = {};
+    if (vapiCallId) updates.vapiCallId = vapiCallId;
+    if (transcript) updates.transcript = transcript;
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(sessions).set(updates).where(eq(sessions.id, sessionId));
+      console.log(`[Session Actions] Sesión ${sessionId} vinculada con transcripción en DB.`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`[Session Actions] Error vinculando transcripción a sesión ${sessionId}:`, error);
     return { success: false, error: String(error) };
   }
 }
