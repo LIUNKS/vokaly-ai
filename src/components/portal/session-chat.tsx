@@ -18,6 +18,7 @@ interface ChatMessage {
   senderId?: string;
   transcript?: string;
   role?: 'user' | 'assistant';
+  transcriptType?: 'partial' | 'final';
 }
 
 interface FloatingReaction {
@@ -46,6 +47,11 @@ function ChatRoom({
   const [quickEmojis, setQuickEmojis] = useState<string[]>(DEFAULT_EMOJIS);
 
   const { messages, send } = useChannel<ChatMessage>({ channelId: sessionId });
+  // canal separado — los parciales de transcripción saturarían la ventana
+  // de historial compartida con chat/reacciones (ver route.ts)
+  const { messages: transcriptMessages } = useChannel<ChatMessage>({
+    channelId: `${sessionId}:transcript`,
+  });
 
   const myClientId = useRef(Math.random().toString(36).substring(7));
   const processedMessageIds = useRef<Set<string>>(new Set());
@@ -152,7 +158,13 @@ function ChatRoom({
   };
 
   const chatMessagesOnly = messages.filter((m) => m.content && m.content.text);
-  const transcriptLines = messages.filter((m) => m.content && m.content.transcript);
+  const transcriptMsgs = transcriptMessages.filter((m) => m.content && m.content.transcript);
+  const lastTranscriptMsg = transcriptMsgs[transcriptMsgs.length - 1];
+  // solo el chunk más reciente puede estar "en curso" — lo anterior ya
+  // quedó cerrado por un final posterior, así que es historial fijo
+  const liveTranscriptLine =
+    lastTranscriptMsg?.content.transcriptType === 'partial' ? lastTranscriptMsg : null;
+  const transcriptLines = transcriptMsgs.filter((m) => m.content.transcriptType === 'final');
 
   return (
     <div className="relative flex h-[450px] flex-col rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm overflow-hidden">
@@ -174,7 +186,7 @@ function ChatRoom({
 
       {/* Historial de Chat */}
       <div className="mb-4 flex-1 overflow-y-auto space-y-2 pr-1">
-        {transcriptLines.length > 0 && (
+        {(transcriptLines.length > 0 || liveTranscriptLine) && (
           <div className="mb-3 space-y-1 border-b border-border pb-3">
             <div className="text-xs text-muted-foreground">📝 Transcripción en vivo</div>
             {transcriptLines.map((m) => (
@@ -185,6 +197,14 @@ function ChatRoom({
                 <span className="text-foreground">{m.content.transcript}</span>
               </div>
             ))}
+            {liveTranscriptLine && (
+              <div className="text-sm italic opacity-70">
+                <span className="font-semibold text-primary">
+                  {liveTranscriptLine.content.role === 'assistant' ? 'Entrevistador' : 'Candidato'}:{' '}
+                </span>
+                <span className="text-foreground">{liveTranscriptLine.content.transcript}…</span>
+              </div>
+            )}
           </div>
         )}
 
