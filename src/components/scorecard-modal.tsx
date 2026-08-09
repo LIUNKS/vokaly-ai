@@ -8,7 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
 import { ScorecardView, ScorecardData } from "@/components/scorecard-view";
 
@@ -31,14 +32,19 @@ export function ScorecardModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        {trigger || (
-          <Button variant="outline" size="sm" className="gap-2 text-xs font-semibold">
-            <FileText className="size-3.5 text-primary" />
-            Ver Scorecard
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger ? (
+        <DialogTrigger render={trigger as React.ReactElement} />
+      ) : (
+        <DialogTrigger
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "gap-2 text-xs font-semibold cursor-pointer"
+          )}
+        >
+          <FileText className="size-3.5 text-primary" />
+          Ver Scorecard
+        </DialogTrigger>
+      )}
 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="sr-only">
