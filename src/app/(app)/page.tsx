@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mic,
@@ -23,7 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -36,10 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { TRACKS } from "@/lib/tracks";
-import {
-  crearSesionModal,
-  type CrearSesionModalState,
-} from "./nueva-sesion/actions";
+import { crearSesionModal } from "./nueva-sesion/actions";
 
 const TRACK_ITEMS = TRACKS.map((t) => ({ value: t.slug, label: t.name }));
 
@@ -151,35 +147,21 @@ export default function Home() {
 
 function NuevaSesionForm({ initialTrack }: { initialTrack: string | null }) {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState<
-    CrearSesionModalState,
-    FormData
-  >(crearSesionModal, { status: "idle" });
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  if (state.status === "done") {
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle>Blueprint listo</DialogTitle>
-          <DialogDescription>
-            Esto es lo que el entrevistador va a usar como guía. Revisa antes de empezar.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-1 overflow-y-auto">
-          <p className="whitespace-pre-wrap text-sm text-foreground">
-            {state.blueprintContent}
-          </p>
-        </div>
-        <DialogFooter>
-          <Button
-            className="w-full cursor-pointer"
-            onClick={() => router.push(`/sesion/${state.sessionId}`)}
-          >
-            Comenzar entrevista
-          </Button>
-        </DialogFooter>
-      </>
-    );
+  // Blueprint preview vive ahora en /sesion/[id] (popover) — acá solo se genera y se entra directo.
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setIsPending(true);
+    const result = await crearSesionModal(new FormData(e.currentTarget));
+    if (result.status === "error") {
+      setError(result.message);
+      setIsPending(false);
+      return;
+    }
+    router.push(`/sesion/${result.sessionId}`);
   }
 
   return (
@@ -191,7 +173,7 @@ function NuevaSesionForm({ initialTrack }: { initialTrack: string | null }) {
         </DialogDescription>
       </DialogHeader>
       <form
-        action={formAction}
+        onSubmit={handleSubmit}
         className="flex flex-1 flex-col gap-4 overflow-y-auto"
       >
         <div className="flex flex-col gap-2">
@@ -222,9 +204,7 @@ function NuevaSesionForm({ initialTrack }: { initialTrack: string | null }) {
             placeholder="Pega la descripción del puesto para ajustar las preguntas a esa oferta"
           />
         </div>
-        {state.status === "error" && (
-          <p className="text-sm text-destructive">{state.message}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
           {isPending ? (
             <>

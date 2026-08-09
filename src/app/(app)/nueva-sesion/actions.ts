@@ -10,7 +10,7 @@ import { generateBlueprintContent } from "@/lib/blueprint";
 
 async function crearSesionRow(
   formData: FormData,
-): Promise<{ error: string } | { id: string; blueprintContent: string }> {
+): Promise<{ error: string } | { id: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,25 +46,17 @@ async function crearSesionRow(
     })
     .returning({ id: sessions.id });
 
-  return { id: session.id, blueprintContent } as const;
+  return { id: session.id } as const;
 }
 
 export type CrearSesionModalState =
-  | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "done"; sessionId: string; blueprintContent: string };
+  | { status: "done"; sessionId: string };
 
-export async function crearSesionModal(
-  _prev: CrearSesionModalState,
-  formData: FormData,
-): Promise<CrearSesionModalState> {
+export async function crearSesionModal(formData: FormData): Promise<CrearSesionModalState> {
   const result = await crearSesionRow(formData);
   if ("error" in result) {
     return { status: "error", message: result.error };
   }
-  return {
-    status: "done",
-    sessionId: result.id,
-    blueprintContent: result.blueprintContent,
-  };
+  return { status: "done", sessionId: result.id };
 }
