@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserRound, Home, Radio } from "lucide-react";
+import { UserRound, Home, Radio, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/envivo", label: "Entrevistas en Vivo", icon: Radio },
+  { href: "/historial", label: "Mi Historial", icon: History },
   { href: "/profile", label: "Perfil", icon: UserRound },
 ];
 
