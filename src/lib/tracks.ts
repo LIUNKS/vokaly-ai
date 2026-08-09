@@ -14,6 +14,7 @@ export const PHASES: { slug: PhaseSlug; name: string; minutes: number }[] = [
 export type Track = {
   slug: string;
   name: string;
+  empresaRef: string; // empresa real de referencia para el rol — no viene de una JD real, es solo ambientación
   roleDescription: string;
   rubric: string;
   guideQuestions: { phase: PhaseSlug; question: string; focus: string }[];
@@ -23,6 +24,7 @@ export const TRACKS: Track[] = [
   {
     slug: "backend",
     name: "Backend",
+    empresaRef: "Stripe",
     roleDescription:
       "Ingeniero de Software Backend en una empresa de producto SaaS de tamaño medio — responsable de APIs, lógica de negocio y persistencia de datos.",
     rubric:
@@ -38,6 +40,7 @@ export const TRACKS: Track[] = [
   {
     slug: "frontend",
     name: "Frontend",
+    empresaRef: "Airbnb",
     roleDescription:
       "Frontend Engineer en un equipo de producto, dueño de la experiencia de usuario en una app web de uso diario.",
     rubric:
@@ -53,6 +56,7 @@ export const TRACKS: Track[] = [
   {
     slug: "data_engineering",
     name: "Data Engineering",
+    empresaRef: "Netflix",
     roleDescription:
       "Data Engineer responsable de pipelines de ingesta y transformación para analítica interna.",
     rubric:
@@ -68,6 +72,7 @@ export const TRACKS: Track[] = [
   {
     slug: "data_science",
     name: "Data Science",
+    empresaRef: "Google",
     roleDescription: "Data Scientist / ML Engineer trabajando en modelos predictivos para producto.",
     rubric:
       "Evaluar comprensión estadística, diseño de experimentos, criterio de modelado y comunicación de resultados a no-técnicos.",
@@ -82,6 +87,7 @@ export const TRACKS: Track[] = [
   {
     slug: "cloud_engineer",
     name: "Cloud Engineer",
+    empresaRef: "AWS",
     roleDescription: "Cloud Engineer a cargo de la infraestructura y confiabilidad de servicios en la nube.",
     rubric:
       "Evaluar conocimiento de servicios cloud, diseño para alta disponibilidad, seguridad básica y capacidad de troubleshooting.",
@@ -96,6 +102,7 @@ export const TRACKS: Track[] = [
   {
     slug: "devops",
     name: "DevOps",
+    empresaRef: "GitLab",
     roleDescription: "DevOps Engineer responsable de CI/CD, automatización de despliegues y observabilidad.",
     rubric:
       "Evaluar diseño de pipelines CI/CD, automatización, prácticas de monitoreo y mentalidad de confiabilidad.",
@@ -110,6 +117,7 @@ export const TRACKS: Track[] = [
   {
     slug: "software_architect",
     name: "Software Architect",
+    empresaRef: "Amazon",
     roleDescription: "Software Architect responsable del diseño técnico de alto nivel de un sistema en crecimiento.",
     rubric:
       "Evaluar levantamiento de requisitos, trade-offs arquitectónicos (escalabilidad, costo, consistencia) y claridad al justificar decisiones.",
@@ -124,6 +132,7 @@ export const TRACKS: Track[] = [
   {
     slug: "full_stack",
     name: "Full Stack",
+    empresaRef: "Shopify",
     roleDescription: "Full Stack Engineer que trabaja tanto en frontend como backend de un producto chico.",
     rubric:
       "Evaluar versatilidad entre frontend y backend, criterio para priorizar y claridad de comunicación end-to-end.",
