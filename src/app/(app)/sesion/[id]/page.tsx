@@ -313,7 +313,7 @@ export default function SesionEnVivoPage() {
               try {
                 const targetId = dbSessionIdRef.current || sessionId;
                 if (targetId) {
-                  portalClient.channel(targetId).send({
+                  portalClient.channel(`${targetId}:transcript`).send({
                     content: {
                       transcript: text.trim(),
                       role: roleKey,
