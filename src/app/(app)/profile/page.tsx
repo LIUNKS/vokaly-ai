@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { eq, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
-import { users, sessions } from "@/db/schema";
+import { users } from "@/db/schema";
 import {
   Card,
   CardContent,
@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -25,8 +24,7 @@ import {
 } from "@/components/ui/select";
 import { TRACKS } from "@/lib/tracks";
 import { saveProfile } from "./actions";
-import { History, Award, ArrowRight, Radio, CheckCircle2, Clock } from "lucide-react";
-import { ScorecardModal } from "@/components/scorecard-modal";
+import { History, ArrowRight } from "lucide-react";
 
 const YEARS_OPTIONS = ["1", "1+", "2", "2+", "3", "3+"];
 const TRACK_ITEMS = TRACKS.map((t) => ({ value: t.slug, label: t.name }));
@@ -50,13 +48,6 @@ export default async function ProfilePage({
     .select()
     .from(users)
     .where(eq(users.id, user.id));
-
-  // Consultar historial de sesiones del usuario
-  const userSessions = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.candidateId, user.id))
-    .orderBy(desc(sessions.createdAt));
 
   return (
     <div className="space-y-8 py-4">
@@ -178,122 +169,26 @@ export default async function ProfilePage({
         </CardContent>
       </Card>
 
-      {/* Sección 2: Historial de Entrevistas y Scorecards */}
-      <section id="historial" className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+      {/* Sección 2: Acceso Rápido al Historial */}
+      <Card className="border border-border bg-gradient-to-r from-card to-muted p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
               <History className="size-5 text-primary" />
-              Historial de Entrevistas Prácticas ({userSessions.length})
-            </h2>
+              Historial de Entrevistas y Scorecards
+            </h3>
             <p className="text-xs text-muted-foreground">
-              Revisa tus evaluaciones anteriores, puntuaciones y scorecards detallados.
+              Accede a la página dedicada para filtrar tus entrevistas por estado (Concluida, En Vivo, Configurando) u ordenar por fecha.
             </p>
           </div>
+          <Link
+            href="/historial"
+            className={buttonVariants({ variant: "default", size: "sm", className: "shrink-0 gap-2" })}
+          >
+            Ver Mi Historial Completo <ArrowRight className="size-4" />
+          </Link>
         </div>
-
-        {userSessions.length === 0 ? (
-          <Card className="p-8 text-center border-dashed border-border bg-card/40">
-            <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="p-4 rounded-full bg-muted text-muted-foreground">
-                <Award className="size-8" />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium">
-                Aún no has completado ninguna sesión de entrevista evaluada.
-              </p>
-              <Link href="/" className={buttonVariants({ variant: "default", size: "sm" })}>
-                Iniciar tu Primera Práctica <ArrowRight className="ml-2 size-4" />
-              </Link>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {userSessions.map((s) => {
-              const trackObj = TRACKS.find((t) => t.slug === s.trackSlug) || TRACKS[0];
-              const isConcluded = s.state === "concluida";
-              const isLive = s.state === "en_vivo";
-              const dateStr = s.createdAt
-                ? new Date(s.createdAt).toLocaleDateString("es-ES", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Reciente";
-
-              return (
-                <Card key={s.id} className="relative overflow-hidden border border-border bg-card hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <CardTitle className="text-base font-bold">
-                          {trackObj.name}
-                        </CardTitle>
-                        <CardDescription className="text-xs flex items-center gap-1.5 mt-1">
-                          <Clock className="size-3 text-muted-foreground" />
-                          {dateStr}
-                        </CardDescription>
-                      </div>
-
-                      {isConcluded ? (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-semibold gap-1">
-                          <CheckCircle2 className="size-3" /> Concluida
-                        </Badge>
-                      ) : isLive ? (
-                        <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-xs font-semibold gap-1">
-                          <Radio className="size-3 animate-pulse" /> En Vivo
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          Configurando
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="pt-0 space-y-4">
-                    <div className="flex items-center justify-between pt-2 border-t border-border/60">
-                      <div>
-                        {isConcluded && s.scorecard ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground">Puntaje:</span>
-                            <span className="text-sm font-black text-primary">
-                              {(s.scorecard as any)?.globalScore || 86}/100
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {isConcluded ? "Scorecard pendiente" : "Sesión activa"}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {isConcluded && (
-                          <ScorecardModal
-                            scorecard={s.scorecard as any}
-                            trackName={trackObj.name}
-                            seniority={profile?.yearsOfExperience ? `${profile.yearsOfExperience} años` : "Senior"}
-                            concludedAt={s.concludedAt || s.createdAt}
-                          />
-                        )}
-
-                        <Link
-                          href={`/sesion/${s.id}`}
-                          className={buttonVariants({ variant: "ghost", size: "sm" })}
-                        >
-                          Ir a Sesión <ArrowRight className="ml-1 size-3.5" />
-                        </Link>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      </Card>
     </div>
   );
 }
