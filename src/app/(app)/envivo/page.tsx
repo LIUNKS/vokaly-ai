@@ -106,7 +106,7 @@ export default async function EntrevistasEnVivoPage() {
               </div>
               <div className="pt-2">
                 <Link
-                  href="/sesion/frontend"
+                  href="/"
                   className={buttonVariants({ size: "sm", className: "gap-2" })}
                 >
                   <Radio className="size-4" />
@@ -149,7 +149,7 @@ export default async function EntrevistasEnVivoPage() {
 
                 <CardFooter className="p-5 pt-3">
                   <Link
-                    href={`/sesion/${session.id}`}
+                    href={`/sesion/${session.id}?joinAs=spectator`}
                     className={buttonVariants({ size: "sm", className: "w-full gap-2 cursor-pointer" })}
                   >
                     <Eye className="size-4" />
