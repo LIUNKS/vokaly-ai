@@ -294,8 +294,20 @@ export default function SesionEnVivoPage() {
     if (vapi && assistantId) {
       try {
         startTimer();
+        // Assistant en Vapi Dashboard solo tiene {{first_message}}/{{blueprint_content}} como placeholders.
+        const firstMessage = `Hola ${candidateName}, te doy la bienvenida a tu sesión de práctica para la posición de ${activeTrack.name} en ${activeTrack.empresaRef}. Hoy te acompaño en la entrevista. Cuando quieras empezar, avísame y comenzamos con la primera pregunta.`;
+
         const call = await vapi.start(assistantId, {
-          variableValues: { sessionId: targetSessionId || sessionId },
+          variableValues: {
+            sessionId: targetSessionId || sessionId,
+            first_message: firstMessage,
+            blueprint_content: blueprintContent,
+          },
+          metadata: {
+            sessionId: targetSessionId || sessionId,
+            candidatoId: candidateId || undefined,
+            trackSlug: realTrackSlug || sessionId,
+          },
         } as any);
 
         if (targetSessionId) {
