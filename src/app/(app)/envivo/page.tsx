@@ -6,12 +6,21 @@ import { TRACKS } from "@/lib/tracks";
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { createClient } from "@/lib/supabase/server";
+import { ConcludedSessionsList } from "./concluded-sessions-list";
 
 export default async function EntrevistasEnVivoPage() {
   let dbActiveSessions: any[] = [];
   let dbConcludedSessions: any[] = [];
+  let currentUserId: string | null = null;
 
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    currentUserId = user?.id || null;
+
     // 1. Consultar sesiones en vivo reales en la base de datos
     dbActiveSessions = await db
       .select({
@@ -19,8 +28,10 @@ export default async function EntrevistasEnVivoPage() {
         trackSlug: sessions.trackSlug,
         state: sessions.state,
         createdAt: sessions.createdAt,
+        candidateId: sessions.candidateId,
         yearsOfExperience: users.yearsOfExperience,
         careerPath: users.careerPath,
+        fullName: users.fullName,
       })
       .from(sessions)
       .leftJoin(users, eq(sessions.candidateId, users.id))
@@ -35,7 +46,9 @@ export default async function EntrevistasEnVivoPage() {
         state: sessions.state,
         concludedAt: sessions.concludedAt,
         scorecard: sessions.scorecard,
+        candidateId: sessions.candidateId,
         yearsOfExperience: users.yearsOfExperience,
+        fullName: users.fullName,
       })
       .from(sessions)
       .leftJoin(users, eq(sessions.candidateId, users.id))
@@ -48,21 +61,32 @@ export default async function EntrevistasEnVivoPage() {
   // Mapear resultados a modelos de track
   const activeList = dbActiveSessions.map((s) => {
     const trackObj = TRACKS.find((t) => t.slug === s.trackSlug) || TRACKS[0];
+    const isOwner = Boolean(currentUserId && s.candidateId === currentUserId);
+    const candidatoLabel = isOwner
+      ? "Tú (Candidato)"
+      : s.fullName || "Candidato en Vivo";
+
     return {
       id: s.id,
       track: trackObj,
-      candidato: "Candidato en Vivo",
+      candidato: candidatoLabel,
       seniority: s.yearsOfExperience ? `${s.yearsOfExperience} años` : "Senior",
-      estado: "en_vivo" as const,
+      estado: s.state as "configurando" | "en_vivo",
+      isOwner,
     };
   });
 
-  const concludedList = dbConcludedSessions.map((s) => {
+  const concludedFormattedList = dbConcludedSessions.map((s) => {
     const trackObj = TRACKS.find((t) => t.slug === s.trackSlug) || TRACKS[0];
+    const isOwner = Boolean(currentUserId && s.candidateId === currentUserId);
+    const candidatoLabel = isOwner
+      ? "Tú (Candidato)"
+      : s.fullName || "Candidato Evaluado";
+
     return {
       id: s.id,
-      track: trackObj,
-      candidato: "Candidato Evaluado",
+      trackName: trackObj.name,
+      candidato: candidatoLabel,
       seniority: s.yearsOfExperience ? `${s.yearsOfExperience} años` : "Senior",
       scoreGeneral: s.scorecard ? `${(s.scorecard as any)?.technical_knowledge?.rating || 8}/10` : "8.5/10",
       fecha: s.concludedAt ? new Date(s.concludedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Reciente",
@@ -148,13 +172,23 @@ export default async function EntrevistasEnVivoPage() {
                 </CardContent>
 
                 <CardFooter className="p-5 pt-3">
-                  <Link
-                    href={`/sesion/${session.id}?joinAs=spectator`}
-                    className={buttonVariants({ size: "sm", className: "w-full gap-2 cursor-pointer" })}
-                  >
-                    <Eye className="size-4" />
-                    Unirse como Espectador
-                  </Link>
+                  {session.isOwner ? (
+                    <Link
+                      href={`/sesion/${session.id}`}
+                      className={buttonVariants({ size: "sm", className: "w-full gap-2 cursor-pointer" })}
+                    >
+                      <Radio className="size-4" />
+                      Reanudar mi Entrevista
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/sesion/${session.id}?joinAs=spectator`}
+                      className={buttonVariants({ size: "sm", className: "w-full gap-2 cursor-pointer" })}
+                    >
+                      <Eye className="size-4" />
+                      Unirse como Espectador
+                    </Link>
+                  )}
                 </CardFooter>
               </Card>
             ))}
@@ -162,49 +196,16 @@ export default async function EntrevistasEnVivoPage() {
         )}
       </section>
 
-      {/* Sección 2: Sesiones Recientes Concluidas */}
+      {/* Sección 2: Sesiones Recientes Concluidas (Paginada) */}
       <section className="space-y-4 pt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
             <CheckCircle2 className="size-5 text-emerald-500" />
-            Evaluaciones Concluidas ({concludedList.length})
+            Evaluaciones Concluidas ({concludedFormattedList.length})
           </h2>
         </div>
 
-        {concludedList.length === 0 ? (
-          <Card className="p-6 text-center border-dashed border-border bg-card/20">
-            <p className="text-xs text-muted-foreground">
-              Aún no hay evaluaciones concluidas registradas en la base de datos. Las sesiones finalizadas aparecerán aquí automáticamente.
-            </p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {concludedList.map((session) => (
-              <Card key={session.id} className="flex items-center justify-between p-5 border-border">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">
-                      Score: {session.scoreGeneral}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{session.fecha}</span>
-                  </div>
-                  <h3 className="font-bold text-sm text-foreground">{session.track.name}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Candidato: {session.candidato} ({session.seniority})
-                  </p>
-                </div>
-
-                <Link
-                  href={`/sesion/${session.id}`}
-                  className={buttonVariants({ variant: "outline", size: "sm", className: "gap-1.5" })}
-                >
-                  Ver Scorecard
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              </Card>
-            ))}
-          </div>
-        )}
+        <ConcludedSessionsList sessions={concludedFormattedList} itemsPerPage={4} />
       </section>
     </div>
   );

@@ -11,13 +11,11 @@ import {
   Clock,
   Filter,
   ArrowUpDown,
-  Search,
   BookOpen,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -41,7 +39,6 @@ export function HistorialClient({
   const [filterState, setFilterState] = useState<string>("todos");
   const [filterTrack, setFilterTrack] = useState<string>("todos");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
-  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Aplicar filtros y ordenamiento
   const filteredSessions = useMemo(() => {
@@ -57,14 +54,6 @@ export function HistorialClient({
           return false;
         }
 
-        // 3. Filtro por búsqueda de texto
-        if (searchQuery.trim() !== "") {
-          const q = searchQuery.toLowerCase();
-          const matchTrack = s.trackName.toLowerCase().includes(q) || s.trackSlug.toLowerCase().includes(q);
-          const matchId = s.id.toLowerCase().includes(q);
-          if (!matchTrack && !matchId) return false;
-        }
-
         return true;
       })
       .sort((a, b) => {
@@ -72,7 +61,7 @@ export function HistorialClient({
         const timeB = new Date(b.createdAt).getTime();
         return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
       });
-  }, [initialSessions, filterState, filterTrack, sortOrder, searchQuery]);
+  }, [initialSessions, filterState, filterTrack, sortOrder]);
 
   return (
     <div className="space-y-6">
@@ -95,40 +84,34 @@ export function HistorialClient({
 
       {/* Barra de Filtros y Controles */}
       <Card className="p-4 border border-border bg-card shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Búsqueda por Texto */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por track o ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 text-xs"
-            />
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Filtro por Estado */}
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground shrink-0 hidden sm:block" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Filter className="size-3.5 text-primary" />
+              Filtrar por Estado
+            </label>
             <Select value={filterState} onValueChange={(val) => setFilterState(val || "todos")}>
               <SelectTrigger className="w-full text-xs">
-                <SelectValue placeholder="Filtrar por Estado" />
+                <SelectValue placeholder="Seleccionar Estado" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los Estados</SelectItem>
                 <SelectItem value="concluida">Concluidas (Evaluadas)</SelectItem>
-                <SelectItem value="en_vivo">En Vivo (Activas)</SelectItem>
                 <SelectItem value="configurando">Configurando</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Filtro por Track */}
-          <div className="flex items-center gap-2">
-            <BookOpen className="size-4 text-muted-foreground shrink-0 hidden sm:block" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="size-3.5 text-primary" />
+              Filtrar por Especialidad / Track
+            </label>
             <Select value={filterTrack} onValueChange={(val) => setFilterTrack(val || "todos")}>
               <SelectTrigger className="w-full text-xs">
-                <SelectValue placeholder="Filtrar por Track" />
+                <SelectValue placeholder="Seleccionar Track" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los Tracks</SelectItem>
@@ -142,8 +125,11 @@ export function HistorialClient({
           </div>
 
           {/* Orden por Fecha */}
-          <div className="flex items-center gap-2">
-            <ArrowUpDown className="size-4 text-muted-foreground shrink-0 hidden sm:block" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <ArrowUpDown className="size-3.5 text-primary" />
+              Ordenar por Fecha
+            </label>
             <Select
               value={sortOrder}
               onValueChange={(val) => setSortOrder((val as "desc" | "asc") || "desc")}

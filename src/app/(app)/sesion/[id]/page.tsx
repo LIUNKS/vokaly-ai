@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Vapi from "@vapi-ai/web";
 import { TRACKS } from "@/lib/tracks";
@@ -19,10 +19,19 @@ import { PortalProvider } from "@portalsdk/react";
 import { portalClient } from "@/lib/portal/client";
 import { SessionChat } from "@/components/portal/session-chat";
 import { ScorecardView } from "@/components/scorecard-view";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function SesionEnVivoPage() {
   const params = useParams();
+  const router = useRouter();
   const sessionId = params?.id as string;
 
   const [dbSessionId, setDbSessionId] = useState<string | null>(null);
@@ -46,12 +55,69 @@ export default function SesionEnVivoPage() {
   const [transcript, setTranscript] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
+  // Estados para el Modal de Advertencia al salir de la sesión
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+
   const activeTrack = TRACKS.find((t) => t.slug === realTrackSlug) || TRACKS[0];
 
   const vapiRef = useRef<Vapi | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dbSessionIdRef = useRef<string | null>(null);
   const liveTranscriptLinesRef = useRef<string[]>([]);
+
+  // 0. Interceptar navegación antes de salir si la sesión está activa para el candidato
+  useEffect(() => {
+    if (!isCandidate || (estado !== "en_vivo" && estado !== "configurando")) return;
+
+    // Recarga o cierre de pestaña del navegador
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    // Clics en enlaces internos de la app
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a");
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href");
+      if (
+        href &&
+        !href.startsWith("#") &&
+        !href.startsWith("javascript:") &&
+        !href.startsWith("tel:") &&
+        !href.startsWith("mailto:")
+      ) {
+        const currentPath = window.location.pathname;
+        if (href !== currentPath && !href.startsWith(`${currentPath}#`)) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingUrl(href);
+          setShowLeaveModal(true);
+        }
+      }
+    };
+
+    // Botón Atrás / Adelante del navegador
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+      setPendingUrl("/");
+      setShowLeaveModal(true);
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleAnchorClick, true);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleAnchorClick, true);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isCandidate, estado]);
 
   // 1. Recuperar sesión en DB mediante getSessionAction
   useEffect(() => {
@@ -408,6 +474,14 @@ export default function SesionEnVivoPage() {
     }
   };
 
+  const handleConfirmLeave = async () => {
+    setShowLeaveModal(false);
+    await handleEndCall();
+    const target = pendingUrl || "/";
+    setPendingUrl(null);
+    router.push(target);
+  };
+
   const handleToggleMute = () => {
     const newMuted = !isMuted;
     if (vapiRef.current) {
@@ -570,6 +644,40 @@ export default function SesionEnVivoPage() {
             />
           </div>
         )}
+
+        {/* Modal de Advertencia al intentar Salir / Cancelar Sesión */}
+        <Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal}>
+          <DialogContent showCloseButton={false} className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="size-5 shrink-0 text-destructive" />
+                ¿Deseas cancelar la sesión de entrevista?
+              </DialogTitle>
+              <DialogDescription className="pt-2 text-xs text-muted-foreground leading-relaxed">
+                Tienes una entrevista activa en curso. Si te desplazas a otra sección o página, la sesión se finalizará y dará por concluida.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowLeaveModal(false);
+                  setPendingUrl(null);
+                }}
+              >
+                Permanecer en la entrevista
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleConfirmLeave}
+              >
+                Sí, salir y cancelar sesión
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PortalProvider>
   );
