@@ -7,26 +7,13 @@ export default function Home() {
     <div className="space-y-8 py-4">
       {/* Banner de Bienvenida */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-card to-muted p-6 md:p-8 border border-border shadow-xl">
-        <div className="relative z-10 max-w-xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary">
-            <Sparkles className="w-3.5 h-3.5" />
-            Vokaly Prep - Evaluación de Voz con IA
-          </div>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
             Entrena tus entrevistas de trabajo en vivo
           </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Participa en sesiones reales evaluadas por nuestro agente de voz conversacional Vapi AI. Selecciona tu especialidad e inicia tu práctica.
-          </p>
-
-          <div className="pt-2 flex flex-wrap gap-4">
-            <Link
-              href="/sesion/frontend"
-              className="px-5 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm flex items-center gap-2 shadow-md transition-all active:scale-95"
-            >
-              <Mic className="w-4 h-4" />
-              Iniciar Sesión Demo (Frontend)
-            </Link>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary shrink-0 self-start sm:self-auto">
+            <Sparkles className="w-3.5 h-3.5" />
+            Evaluación de Voz con IA
           </div>
         </div>
       </section>
@@ -37,9 +24,6 @@ export default function Home() {
           <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
             Tracks de Práctica Disponibles
           </h2>
-          <span className="text-xs text-muted-foreground font-medium">
-            {TRACKS.length} Especialidades configuradas
-          </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -54,19 +38,8 @@ export default function Home() {
                     {track.slug.replace("_", " ")}
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-primary" />
                     Senior+
                   </span>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
-                    {track.name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                    <Building2 className="w-3.5 h-3.5" />
-                    Rol de Especialidad
-                  </p>
                 </div>
 
                 <p className="text-xs text-muted-foreground/90 leading-relaxed line-clamp-3">
