@@ -29,13 +29,13 @@
 
 ## Track B — Dev ___ — Sesión en Vivo (4.2) — ruta crítica
 
-- [ ] mock perfil candidato (seniority, forma de contrato Día 0) → no esperar form real de A
-- [ ] mock Blueprint content (string, forma de contrato Día 0) → no esperar Blueprint gen real de A
-- [ ] Vapi call setup
-- [ ] página sesión en vivo (host del widget Vapi, estado de la llamada)
-- [ ] webhook route + validación zod (trust boundary)
-- [ ] máquina de estados Configurando → En Vivo → Concluida
-- [ ] chequeo asimetría seniority al crear sesión
+- [x] perfil candidato real (seniority vía `users.yearsOfExperience`, ya no mock)
+- [x] Blueprint content real (`sessions.blueprintContent`, generado por A vía Groq — ya no mock)
+- [x] Vapi call setup
+- [x] página sesión en vivo (host del widget Vapi, estado de la llamada)
+- [x] webhook route + validación zod (trust boundary)
+- [x] máquina de estados Configurando → En Vivo → Concluida
+- [x] chequeo asimetría seniority al crear sesión — no aplica: candidato tope "3+" años (profile/page.tsx YEARS_OPTIONS), entrevistador IA fijo "Senior" (blueprint.ts) → nunca queda por debajo
 
 ## Track C — Dev ___ — Capa Social (4.3)
 
