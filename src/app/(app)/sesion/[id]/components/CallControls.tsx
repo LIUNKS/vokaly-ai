@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Mic, MicOff, PhoneOff, Play } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Play, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -12,6 +12,7 @@ interface CallControlsProps {
   onEndCall: () => void;
   onToggleMute: () => void;
   isLoading?: boolean;
+  isPreparing?: boolean;
 }
 
 export function CallControls({
@@ -21,19 +22,30 @@ export function CallControls({
   onEndCall,
   onToggleMute,
   isLoading = false,
+  isPreparing = false,
 }: CallControlsProps) {
+  const isDisabled = isLoading || isPreparing;
+
   return (
     <Card className="w-full">
       <CardContent className="flex items-center justify-center gap-4 py-4 px-6">
         {estado === "configurando" && (
           <Button
             onClick={onStartCall}
-            disabled={isLoading}
+            disabled={isDisabled}
             size="lg"
-            className="w-full py-6 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-6 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
           >
-            <Play className="size-4 fill-current" />
-            {isLoading ? "Conectando..." : "Iniciar Entrevista en Vivo"}
+            {isDisabled ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Play className="size-4 fill-current" />
+            )}
+            {isPreparing
+              ? "Preparando entrevista..."
+              : isLoading
+              ? "Conectando..."
+              : "Iniciar Entrevista en Vivo"}
           </Button>
         )}
 

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Radio, CheckCircle, Settings, ShieldCheck, ArrowLeft, FileText } from "lucide-react";
+import { Radio, CheckCircle, Sparkles, ShieldCheck, ArrowLeft, FileText } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,8 +79,8 @@ export function SessionHeader({
 
           {estado === "configurando" && (
             <div className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-500 flex items-center gap-1.5 animate-pulse">
-              <Settings className="size-3.5" />
-              CONFIGURANDO
+              <Sparkles className="size-3.5" />
+              A PUNTO DE EMPEZAR
             </div>
           )}
 
