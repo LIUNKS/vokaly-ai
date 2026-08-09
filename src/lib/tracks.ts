@@ -28,11 +28,11 @@ export const TRACKS: Track[] = [
     roleDescription:
       "Ingeniero de Software Backend en una empresa de producto SaaS de tamaño medio — responsable de APIs, lógica de negocio y persistencia de datos.",
     rubric:
-      "Evaluar razonamiento algorítmico, diseño de APIs/datos, manejo de casos límite y claridad al comunicar trade-offs. Tono profesional y directo.",
+      "Evaluar razonamiento algorítmico, diseño de APIs y datos, manejo de casos límite y claridad al comunicar trade-offs. Tono profesional y directo.",
     guideQuestions: [
       { phase: "intro", question: "Cuéntame brevemente tu experiencia y en qué stack backend te sientes más cómodo.", focus: "contexto" },
-      { phase: "tecnica_1", question: "¿Cómo diseñarías el modelo de datos para un sistema de reservas con alta concurrencia?", focus: "diseño de datos / concurrencia" },
-      { phase: "tecnica_2", question: "Un endpoint empezó a responder lento bajo carga. ¿Cómo lo investigas?", focus: "debugging / performance" },
+      { phase: "tecnica_1", question: "¿Cómo diseñarías el modelo de datos para un sistema de reservas con alta concurrencia?", focus: "diseño de datos y concurrencia" },
+      { phase: "tecnica_2", question: "Un endpoint empezó a responder lento bajo carga. ¿Cómo lo investigas?", focus: "debugging y rendimiento" },
       { phase: "conductual", question: "Cuéntame de una decisión técnica difícil que tomaste y qué aprendiste.", focus: "STAR" },
       { phase: "cierre", question: "¿Qué preguntas tienes sobre el rol?", focus: "cierre" },
     ],
@@ -47,8 +47,8 @@ export const TRACKS: Track[] = [
       "Evaluar manejo de estado, performance de render, accesibilidad y testing. Comunicación clara del trade-off UX vs complejidad.",
     guideQuestions: [
       { phase: "intro", question: "Cuéntame tu experiencia con frameworks frontend y qué proyecto te marcó más.", focus: "contexto" },
-      { phase: "tecnica_1", question: "¿Cómo evitarías re-renders innecesarios en una lista grande que actualiza seguido?", focus: "estado / performance" },
-      { phase: "tecnica_2", question: "Un usuario reporta que la página tarda en cargar en 3G. ¿Por dónde empiezas a diagnosticar?", focus: "debugging / performance" },
+      { phase: "tecnica_1", question: "¿Cómo evitarías re-renders innecesarios en una lista grande que actualiza seguido?", focus: "estado y rendimiento" },
+      { phase: "tecnica_2", question: "Un usuario reporta que la página tarda en cargar en 3G. ¿Por dónde empiezas a diagnosticar?", focus: "debugging y rendimiento" },
       { phase: "conductual", question: "Cuéntame de un conflicto de diseño con un compañero de equipo y cómo lo resolviste.", focus: "STAR" },
       { phase: "cierre", question: "¿Preguntas para mí sobre el equipo o el producto?", focus: "cierre" },
     ],
@@ -64,7 +64,7 @@ export const TRACKS: Track[] = [
     guideQuestions: [
       { phase: "intro", question: "Cuéntame tu experiencia con pipelines de datos y qué herramientas usas normalmente.", focus: "contexto" },
       { phase: "tecnica_1", question: "Describe una consulta para encontrar los top 3 clientes por mes usando window functions.", focus: "SQL" },
-      { phase: "tecnica_2", question: "Un pipeline empezó a fallar silenciosamente y los datos llegan incompletos. ¿Cómo lo detectas y corriges?", focus: "calidad de datos / debugging" },
+      { phase: "tecnica_2", question: "Un pipeline empezó a fallar silenciosamente y los datos llegan incompletos. ¿Cómo lo detectas y corriges?", focus: "calidad de datos y debugging" },
       { phase: "conductual", question: "Cuéntame de una vez que tuviste que justificar una decisión de arquitectura de datos ante el equipo.", focus: "STAR" },
       { phase: "cierre", question: "¿Qué preguntas tienes sobre el volumen o la stack de datos del equipo?", focus: "cierre" },
     ],
@@ -73,12 +73,12 @@ export const TRACKS: Track[] = [
     slug: "data_science",
     name: "Data Science",
     empresaRef: "Google",
-    roleDescription: "Data Scientist / ML Engineer trabajando en modelos predictivos para producto.",
+    roleDescription: "Data Scientist o ML Engineer trabajando en modelos predictivos para producto.",
     rubric:
       "Evaluar comprensión estadística, diseño de experimentos, criterio de modelado y comunicación de resultados a no-técnicos.",
     guideQuestions: [
       { phase: "intro", question: "Cuéntame tu experiencia con modelos de ML y en qué problema aplicaste alguno recientemente.", focus: "contexto" },
-      { phase: "tecnica_1", question: "¿Cómo diseñarías un test A/B para validar un cambio de recomendación de producto?", focus: "diseño de experimentos" },
+      { phase: "tecnica_1", question: "¿Cómo diseñarías un experimento controlado para validar un cambio de recomendación de producto?", focus: "diseño de experimentos" },
       { phase: "tecnica_2", question: "Tu modelo tiene buena métrica offline pero mal desempeño en producción. ¿Qué investigas primero?", focus: "debugging de modelos" },
       { phase: "conductual", question: "Cuéntame de una vez que tuviste que explicar un resultado técnico a alguien no técnico.", focus: "STAR" },
       { phase: "cierre", question: "¿Preguntas sobre los datos o el problema de negocio del equipo?", focus: "cierre" },
@@ -92,7 +92,7 @@ export const TRACKS: Track[] = [
     rubric:
       "Evaluar conocimiento de servicios cloud, diseño para alta disponibilidad, seguridad básica y capacidad de troubleshooting.",
     guideQuestions: [
-      { phase: "intro", question: "Cuéntame tu experiencia con proveedores cloud (AWS/GCP/Azure) y qué herramientas de IaC usas.", focus: "contexto" },
+      { phase: "intro", question: "Cuéntame tu experiencia con proveedores cloud (AWS, GCP o Azure) y qué herramientas de IaC usas.", focus: "contexto" },
       { phase: "tecnica_1", question: "¿Cómo diseñarías la infraestructura para un servicio con picos de tráfico impredecibles?", focus: "diseño de infraestructura" },
       { phase: "tecnica_2", question: "Un servicio empezó a devolver errores 5xx intermitentes. ¿Cómo lo diagnosticas?", focus: "troubleshooting" },
       { phase: "conductual", question: "Cuéntame de un incidente de producción que manejaste y qué cambiaste después.", focus: "STAR" },
@@ -103,12 +103,12 @@ export const TRACKS: Track[] = [
     slug: "devops",
     name: "DevOps",
     empresaRef: "GitLab",
-    roleDescription: "DevOps Engineer responsable de CI/CD, automatización de despliegues y observabilidad.",
+    roleDescription: "DevOps Engineer responsable de integración y despliegue continuos, automatización de despliegues y observabilidad.",
     rubric:
-      "Evaluar diseño de pipelines CI/CD, automatización, prácticas de monitoreo y mentalidad de confiabilidad.",
+      "Evaluar diseño de pipelines de integración y despliegue continuos, automatización, prácticas de monitoreo y mentalidad de confiabilidad.",
     guideQuestions: [
-      { phase: "intro", question: "Cuéntame tu experiencia con pipelines de CI/CD y qué herramientas usas normalmente.", focus: "contexto" },
-      { phase: "tecnica_1", question: "¿Cómo diseñarías un pipeline de despliegue con rollback automático?", focus: "CI/CD" },
+      { phase: "intro", question: "Cuéntame tu experiencia con pipelines de integración y despliegue continuos y qué herramientas usas normalmente.", focus: "contexto" },
+      { phase: "tecnica_1", question: "¿Cómo diseñarías un pipeline de despliegue con rollback automático?", focus: "integración y despliegue continuos" },
       { phase: "tecnica_2", question: "Un despliegue rompió producción y las alertas tardaron en avisar. ¿Qué cambiarías?", focus: "observabilidad" },
       { phase: "conductual", question: "Cuéntame de una vez que automatizaste algo manual y qué impacto tuvo.", focus: "STAR" },
       { phase: "cierre", question: "¿Preguntas sobre el proceso de despliegue del equipo?", focus: "cierre" },
