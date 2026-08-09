@@ -1,42 +1,69 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Excluir rutas públicas/técnicas (API, webhooks, assets) de cualquier sobrecosto de Auth
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/static") ||
+    pathname.includes(".") // Archivos estáticos (.png, .svg, .ico, etc.)
+  ) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Si Supabase URL o Anon Key no están configuradas (modo local/mock), permitir navegación libre
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes("tu-proyecto")) {
+    return response;
+  }
+
+  const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some(
+    (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
   );
 
-  // must call getUser() (not getSession()) — validates the token against
-  // Supabase's server instead of trusting the cookie, refreshing it if needed
+  // 2. Optimización Optimista: Si no hay cookies de Supabase y es ruta de Auth (login/signup), evitar llamada de red
+  if (!hasAuthCookie && isAuthRoute) {
+    return response;
+  }
+
+  // 3. Optimización Optimista: Si no hay cookies y es ruta protegida, redirigir a /login sin llamada de red
+  if (!hasAuthCookie && !isAuthRoute && !pathname.startsWith("/auth")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // 4. Instanciar cliente Supabase SSR para refrescar sesión cuando hay cookies presentes
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value)
+        );
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  // Validar token de usuario únicamente cuando existen cookies de sesión
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/signup");
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
@@ -44,37 +71,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (!user && !isAuthRoute && !request.nextUrl.pathname.startsWith("/auth")) {
+  if (!user && !isAuthRoute && !pathname.startsWith("/auth")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
-  }
-
-  const isProfileRoute = request.nextUrl.pathname.startsWith("/profile");
-  if (user && !isAuthRoute && !isProfileRoute) {
-    const [profile] = await db
-      .select({
-        fullName: users.fullName,
-        nickname: users.nickname,
-        careerPath: users.careerPath,
-        yearsOfExperience: users.yearsOfExperience,
-        description: users.description,
-      })
-      .from(users)
-      .where(eq(users.id, user.id));
-
-    const profileIncomplete =
-      !profile?.fullName ||
-      !profile?.nickname ||
-      !profile?.careerPath ||
-      !profile?.yearsOfExperience ||
-      !profile?.description;
-
-    if (profileIncomplete) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/profile";
-      return NextResponse.redirect(url);
-    }
   }
 
   return response;
