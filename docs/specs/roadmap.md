@@ -20,8 +20,8 @@
 - [x] Supabase Auth (login candidato)
 - [x] form perfil candidato (especialidad, nivel, objetivo) — input directo de Blueprint gen
 - [x] seed tracks predeterminados (hardcoded/JSON)
-- [ ] página iniciar sesión (elegir track, pegar JD opcional, dispara Blueprint gen)
-- [ ] Blueprint gen vía AI Gateway (track + JD opcional → Blueprint)
+- [x] página iniciar sesión (elegir track, pegar JD opcional, dispara Blueprint gen)
+- [x] Blueprint gen vía AI Gateway (track + JD opcional → Blueprint)
 - [ ] mock transcript (string, forma de contrato Día 0) → no esperar webhook real de B
 - [ ] Scorecard gen vía AI Gateway (transcript → Scorecard)
 - [ ] trigger sesión-concluida → Scorecard (mock hasta integración)
