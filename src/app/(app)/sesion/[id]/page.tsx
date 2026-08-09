@@ -427,6 +427,16 @@ export default function SesionEnVivoPage() {
             candidatoId: candidateId || undefined,
             trackSlug: realTrackSlug || sessionId,
           },
+          // override reemplaza la lista completa, no la extiende — hay que
+          // repetir los defaults de Vapi además de "transcript" o se pierden
+          serverMessages: [
+            "transcript",
+            "end-of-call-report",
+            "status-update",
+            "tool-calls",
+            "transfer-destination-request",
+            "user-interrupted",
+          ],
         } as any);
 
         if (targetSessionId) {
