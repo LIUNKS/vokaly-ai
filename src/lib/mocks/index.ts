@@ -83,49 +83,6 @@ export const VAPI_SESSION_MOCK: VapiMockSession = {
   },
 };
 
-export interface RatingFeedbackMock {
-  rating: number;
-  feedback: string;
-}
-
-export interface ScorecardMock {
-  id: string;
-  sesionId: string;
-  globalScore: number;
-  technicalKnowledge: RatingFeedbackMock;
-  answerStructure: RatingFeedbackMock;
-  communicationSkill: RatingFeedbackMock;
-  strengths: string[];
-  areasToImprove: string[];
-  executiveSummary: string;
-}
-
-export const SCORECARD_MOCK: ScorecardMock = {
-  id: "sc-1122-3344",
-  sesionId: VAPI_SESSION_MOCK.sessionId,
-  globalScore: 88,
-  technicalKnowledge: {
-    rating: 9,
-    feedback: "Excelente dominio de React Server Components y conceptos de Next.js.",
-  },
-  answerStructure: {
-    rating: 8,
-    feedback: "Buenas respuestas estructuradas. Podría profundizar más en la parte de Resultados (STAR).",
-  },
-  communicationSkill: {
-    rating: 9,
-    feedback: "Comunicación fluida, vocabulario técnico preciso y conciso.",
-  },
-  strengths: [
-    "Dominio profundo de React 19 y Server Actions.",
-    "Explicación clara de compensaciones de arquitectura.",
-  ],
-  areasToImprove: [
-    "Incluir métricas concretas al describir optimizaciones de rendimiento.",
-  ],
-  executiveSummary: "El candidato demostró nivel Senior sólido para el rol en Tech Corp.",
-};
-
 export interface PortalAuthMock {
   sessionId: string;
   role: "candidate" | "interviewer" | "spectator";
