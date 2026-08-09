@@ -1,25 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-<<<<<<< HEAD
 import { useParams } from "next/navigation";
 import Link from "next/link";
-=======
-import { useParams, useSearchParams } from "next/navigation";
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
 import Vapi from "@vapi-ai/web";
 import { TRACKS } from "@/lib/tracks";
 import { SessionHeader } from "./components/SessionHeader";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { CallControls } from "./components/CallControls";
-<<<<<<< HEAD
 import { Clock, MessageSquare, AlertCircle, History, ArrowRight } from "lucide-react";
 import { getSessionAction, updateSessionStateAction, getSessionStateAction } from "../actions";
-=======
-import Link from "next/link";
-import { Clock, MessageSquare, AlertCircle, History, ArrowRight } from "lucide-react";
-import { createOrGetSessionAction, updateSessionStateAction, getSessionStateAction } from "../actions";
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
 import { PortalProvider } from "@portalsdk/react";
 import { portalClient } from "@/lib/portal/client";
 import { SessionChat } from "@/components/portal/session-chat";
@@ -28,28 +18,17 @@ import { buttonVariants } from "@/components/ui/button";
 
 export default function SesionEnVivoPage() {
   const params = useParams();
-<<<<<<< HEAD
   const sessionId = params?.id as string;
-=======
-  const searchParams = useSearchParams();
-  const slugOrId = (params?.id as string) || "frontend";
-  const forceSpectator = searchParams.get("joinAs") === "spectator";
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
 
   const [dbSessionId, setDbSessionId] = useState<string | null>(null);
   const [realTrackSlug, setRealTrackSlug] = useState<string | null>(null);
   const [seniority, setSeniority] = useState<string>("Senior");
-<<<<<<< HEAD
   const [isCandidate, setIsCandidate] = useState<boolean>(true);
   const [candidateId, setCandidateId] = useState<string | null>(null);
   const [candidateName, setCandidateName] = useState<string>("Candidato");
   const [blueprintContent, setBlueprintContent] = useState<string>("");
   const [isSessionLoading, setIsSessionLoading] = useState<boolean>(true);
   const [sessionNotFound, setSessionNotFound] = useState(false);
-=======
-  const [isCandidate, setIsCandidate] = useState<boolean>(!forceSpectator);
-  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(isUuid);
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
   const [estado, setEstado] = useState<"configurando" | "en_vivo" | "concluida">("configurando");
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -70,45 +49,10 @@ export default function SesionEnVivoPage() {
   // 1. Recuperar sesión en DB mediante getSessionAction
   useEffect(() => {
     let isMounted = true;
-<<<<<<< HEAD
     getSessionAction(sessionId).then((res) => {
       if (!isMounted) return;
       if (!res) {
         setSessionNotFound(true);
-=======
-    createOrGetSessionAction(slugOrId).then((res) => {
-      if (isMounted) {
-        if (res.id) {
-          setDbSessionId(res.id);
-          dbSessionIdRef.current = res.id;
-          setEstado(res.state);
-          setRealTrackSlug(res.trackSlug);
-          if (res.yearsOfExperience) {
-            setSeniority(`${res.yearsOfExperience} años`);
-          }
-          if (res.userName) {
-            setUserName(res.userName);
-          }
-          if (forceSpectator) {
-            setIsCandidate(false);
-          } else if (typeof res.isCandidate === "boolean") {
-            setIsCandidate(res.isCandidate);
-          }
-
-          // Sincronizar el reloj del espectador con la hora real de inicio en DB (createdAt)
-          if (res.state === "en_vivo") {
-            let elapsedSec = 0;
-            if (res.createdAt) {
-              elapsedSec = Math.max(
-                0,
-                Math.floor((Date.now() - new Date(res.createdAt).getTime()) / 1000)
-              );
-            }
-            setDurationSeconds(elapsedSec);
-            startTimer(elapsedSec);
-          }
-        }
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
         setIsSessionLoading(false);
         return;
       }
@@ -125,6 +69,7 @@ export default function SesionEnVivoPage() {
       }
       if (res.candidateId) setCandidateId(res.candidateId);
       if (res.candidateName) setCandidateName(res.candidateName);
+      if (res.userName) setUserName(res.userName);
       if (res.blueprintContent) setBlueprintContent(res.blueprintContent);
 
       // Sincronizar el reloj del espectador con la hora real de inicio en DB (createdAt)
@@ -144,15 +89,9 @@ export default function SesionEnVivoPage() {
     return () => {
       isMounted = false;
     };
-<<<<<<< HEAD
   }, [sessionId]);
 
   // Sincronización en tiempo real del estado de la sesión para espectadores
-=======
-  }, [slugOrId, forceSpectator]);
-
-  // Sincronización en tiempo real del estado de la sesión para todos los participantes y espectadores
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
   useEffect(() => {
     const targetSessionId = dbSessionId || dbSessionIdRef.current;
     if (!targetSessionId) return;
@@ -492,11 +431,7 @@ export default function SesionEnVivoPage() {
                 sessionId={currentSessionId}
                 role={role}
                 phase={estado}
-<<<<<<< HEAD
-                userName={candidateName}
-=======
-                userName={userName || undefined}
->>>>>>> 74cfd00 (fix(chat): pass authenticated user name to SessionChat instead of default Espectador label)
+                userName={userName || candidateName}
               />
             </div>
           )}
@@ -512,11 +447,7 @@ export default function SesionEnVivoPage() {
               </h3>
               {isCandidate && (
                 <Link
-<<<<<<< HEAD
                   href="/historial"
-=======
-                  href="/profile#historial"
->>>>>>> 5817f72 (feat(session): add realtime session termination sync, candidate interview history and scorecard evaluation modal)
                   className={buttonVariants({ variant: "outline", size: "sm" })}
                 >
                   Ver Todo mi Historial <ArrowRight className="ml-1.5 size-3.5" />
