@@ -7,6 +7,7 @@ import Vapi from "@vapi-ai/web";
 import { TRACKS } from "@/lib/tracks";
 import { SessionHeader } from "./components/SessionHeader";
 import { AudioVisualizer } from "./components/AudioVisualizer";
+import { LiveTranscriptCard } from "./components/LiveTranscriptCard";
 import { CallControls } from "./components/CallControls";
 import { Clock, MessageSquare, AlertCircle, History, ArrowRight } from "lucide-react";
 import {
@@ -484,12 +485,16 @@ export default function SesionEnVivoPage() {
           }
         >
           <div className="w-full flex flex-col items-center justify-center">
-            <AudioVisualizer
-              isSpeaking={isSpeaking}
-              speakerRole={speakerRole}
-              volumeLevel={volumeLevel}
-              candidatoNombre={isCandidate ? "Tú (Candidato)" : candidateName}
-            />
+            {isCandidate ? (
+              <AudioVisualizer
+                isSpeaking={isSpeaking}
+                speakerRole={speakerRole}
+                volumeLevel={volumeLevel}
+                candidatoNombre="Tú (Candidato)"
+              />
+            ) : (
+              <LiveTranscriptCard sessionId={currentSessionId} candidateName={candidateName} />
+            )}
 
             {/* Info extra y Timer */}
             {estado === "en_vivo" && (
