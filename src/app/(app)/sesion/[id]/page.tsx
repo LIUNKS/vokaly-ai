@@ -257,7 +257,7 @@ export default function SesionEnVivoPage() {
         startTimer();
         // Ambos ya resueltos acá (no placeholders) — el Assistant en Vapi Dashboard solo tiene
         // {{first_message}}/{{blueprint_content}}, nada que templatizar de su lado.
-        const firstMessage = `Hola ${candidateName}, bienvenido/a a tu sesión de práctica para la posición de ${activeTrack.name} en Empresa de Producto SaaS. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.`;
+        const firstMessage = `Hola ${candidateName}, bienvenido/a a tu sesión de práctica para la posición de ${activeTrack.name} en ${activeTrack.empresaRef}. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.`;
 
         await vapi.start(assistantId, {
           variableValues: {
@@ -375,7 +375,7 @@ export default function SesionEnVivoPage() {
       ) : (
         <SessionHeader
           trackNombre={activeTrack.name}
-          empresaRef="Empresa de Producto SaaS"
+          empresaRef={activeTrack.empresaRef}
           seniority={seniority}
           estado={estado}
           blueprintContent={blueprintContent}
