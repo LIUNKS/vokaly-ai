@@ -46,8 +46,17 @@ function ChatRoom({
   const { messages, send } = useChannel<ChatMessage>({ channelId: sessionId });
 
   const myClientId = useRef(Math.random().toString(36).substring(7));
-  const processedMessageIds = useRef<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const { send: sendReaction } = useChannel<ChatMessage>({
+    channelId: `${sessionId}:reactions`,
+    history: 'none',
+    onMessage: (msg) => {
+      if (msg.content?.emoji && msg.content?.senderId !== myClientId.current) {
+        triggerAnimation(msg.content.emoji);
+      }
+    },
+  });
 
   const roleLabel = userName || (role === 'candidate' ? 'Candidato' : 'Espectador');
 
@@ -88,23 +97,6 @@ function ChatRoom({
   };
 
   useEffect(() => {
-    if (messages.length === 0) return;
-
-    const lastMessage = messages[messages.length - 1];
-
-    if (lastMessage?.id && !processedMessageIds.current.has(lastMessage.id)) {
-      processedMessageIds.current.add(lastMessage.id);
-
-      if (
-        lastMessage.content?.emoji &&
-        lastMessage.content?.senderId !== myClientId.current
-      ) {
-        triggerAnimation(lastMessage.content.emoji);
-      }
-    }
-  }, [messages]);
-
-  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowEmojiMenu(false);
@@ -134,7 +126,8 @@ function ChatRoom({
     triggerAnimation(emoji);
     pushToRecent(emoji);
 
-    send({
+    sendReaction({
+      ephemeral: true,
       content: {
         emoji,
         senderId: myClientId.current,
