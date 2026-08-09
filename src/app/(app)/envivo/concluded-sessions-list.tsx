@@ -2,16 +2,18 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { CheckCircle2, ArrowRight, ChevronLeft, ChevronRight, Clock, User } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ScorecardModal } from "@/components/scorecard-modal";
 
 export interface ConcludedSessionItem {
   id: string;
   trackName: string;
   candidato: string;
   seniority: string;
-  scoreGeneral: string;
+  scorecard?: any;
   fecha: string;
 }
 
@@ -28,7 +30,7 @@ export function ConcludedSessionsList({
 
   if (sessions.length === 0) {
     return (
-      <Card className="p-6 text-center border-dashed border-border bg-card/20">
+      <Card className="p-8 text-center border-dashed border-border bg-card/20">
         <p className="text-xs text-muted-foreground">
           Aún no hay evaluaciones concluidas registradas en la base de datos. Las sesiones finalizadas aparecerán aquí automáticamente.
         </p>
@@ -84,32 +86,85 @@ export function ConcludedSessionsList({
 
   return (
     <div className="space-y-4">
-      {/* Lista de Tarjetas Pagina */}
+      {/* Lista de Tarjetas Estilo Historial */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {currentSessions.map((session) => (
-          <Card key={session.id} className="flex items-center justify-between p-5 border-border hover:border-primary/40 transition-colors">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">
-                  Score: {session.scoreGeneral}
-                </span>
-                <span className="text-xs text-muted-foreground">{session.fecha}</span>
-              </div>
-              <h3 className="font-bold text-sm text-foreground">{session.trackName}</h3>
-              <p className="text-xs text-muted-foreground">
-                Candidato: {session.candidato} ({session.seniority})
-              </p>
-            </div>
+        {currentSessions.map((s) => {
+          const globalScore = s.scorecard?.globalScore || 86;
 
-            <Link
-              href={`/sesion/${session.id}`}
-              className={buttonVariants({ variant: "outline", size: "sm", className: "gap-1.5 shrink-0" })}
+          return (
+            <Card
+              key={s.id}
+              className="relative overflow-hidden border border-border bg-card hover:shadow-md transition-all flex flex-col justify-between"
             >
-              Ver Scorecard
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </Card>
-        ))}
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base font-bold">
+                      {s.trackName}
+                    </CardTitle>
+                    <CardDescription className="text-xs flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                      <span className="flex items-center gap-1 font-medium text-foreground">
+                        <User className="size-3 text-primary" />
+                        {s.candidato} ({s.seniority})
+                      </span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="size-3 text-muted-foreground" />
+                        {s.fecha}
+                      </span>
+                    </CardDescription>
+                  </div>
+
+                  <Badge
+                    variant="outline"
+                    className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-semibold gap-1 shrink-0"
+                  >
+                    <CheckCircle2 className="size-3" /> Concluida
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-0 space-y-4">
+                <div className="flex items-center justify-between pt-3 border-t border-border/60">
+                  <div>
+                    {s.scorecard ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground font-medium">
+                          Puntaje Global:
+                        </span>
+                        <span className="text-sm font-black text-primary">
+                          {globalScore}/100
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">
+                        Scorecard listo
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {s.scorecard && (
+                      <ScorecardModal
+                        scorecard={s.scorecard}
+                        trackName={s.trackName}
+                        seniority={s.seniority}
+                        concludedAt={s.fecha}
+                      />
+                    )}
+
+                    <Link
+                      href={`/sesion/${s.id}`}
+                      className={buttonVariants({ variant: "ghost", size: "sm" })}
+                    >
+                      Ir a Sesión <ArrowRight className="ml-1 size-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Barra de Controles de Paginación */}

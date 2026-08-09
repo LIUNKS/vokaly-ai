@@ -85,13 +85,23 @@ export default async function EntrevistasEnVivoPage() {
       ? "Tú (Candidato)"
       : s.fullName || "Candidato Evaluado";
 
+    const fechaStr = s.concludedAt
+      ? new Date(s.concludedAt).toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "Reciente";
+
     return {
       id: s.id,
       trackName: trackObj.name,
       candidato: candidatoLabel,
       seniority: s.yearsOfExperience ? `${s.yearsOfExperience} años` : "Senior",
-      scoreGeneral: s.scorecard ? `${(s.scorecard as any)?.technical_knowledge?.rating || 8}/10` : "8.5/10",
-      fecha: s.concludedAt ? new Date(s.concludedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Reciente",
+      scorecard: s.scorecard,
+      fecha: fechaStr,
     };
   });
 
