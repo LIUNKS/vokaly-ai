@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Radio, Eye, ArrowRight, ShieldCheck, CheckCircle2, VideoOff } from "lucide-react";
+import { Radio, Eye, ArrowRight, ShieldCheck, CheckCircle2, VideoOff, MessageSquare, Mic } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { TRACKS } from "@/lib/tracks";
@@ -107,15 +107,49 @@ export default async function EntrevistasEnVivoPage() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* Banner de la Capa Social */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-card to-muted p-6 md:p-8 border border-border shadow-xl">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            Entrevistas en Vivo Reales
-          </h1>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-xs font-semibold text-rose-500 shrink-0 self-start sm:self-auto">
-            <Radio className="size-3.5 animate-pulse" />
-            Audiencia en Tiempo Real
+      {/* Banner Hero Capa Social - Mismo estilo que Inicio */}
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-card/80 p-6 md:p-10 shadow-xl backdrop-blur-md">
+        {/* Glows ambientales de fondo */}
+        <div className="absolute -top-24 -right-24 size-96 rounded-full bg-rose-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 size-80 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          {/* Contenido Izquierdo */}
+          <div className="space-y-4 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-500">
+              <Radio className="size-3.5 animate-pulse text-rose-500" />
+              Audiencia en Tiempo Real
+            </div>
+
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">
+              Entrevistas en Vivo
+            </h1>
+
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Presenciá simulaciones técnicas en directo, interactuá en el chat en tiempo real y consultá las evaluaciones concluidas.
+            </p>
+          </div>
+
+          {/* Tarjeta Visual Derecha / Feature Badge Grid */}
+          <div className="hidden lg:flex flex-col gap-3 p-5 rounded-2xl bg-muted/40 border border-border/60 min-w-[250px] shadow-sm backdrop-blur-xs">
+            <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
+              <div className="size-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
+                <Radio className="size-4 animate-pulse" />
+              </div>
+              Transmisiones en Directo
+            </div>
+            <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
+              <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <MessageSquare className="size-4" />
+              </div>
+              Chat & Reacciones Portal
+            </div>
+            <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
+              <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                <CheckCircle2 className="size-4" />
+              </div>
+              Scorecards Evaluados
+            </div>
           </div>
         </div>
       </section>

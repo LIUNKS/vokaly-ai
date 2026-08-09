@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import {
   Workflow,
   Network,
   Layers,
+  Radio,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -63,28 +65,62 @@ export default function Home() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* Banner de Bienvenida */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-card to-muted p-6 md:p-8 border border-border shadow-xl">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-2 max-w-xl">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-              Entrena tus entrevistas de trabajo en vivo
+      {/* Banner Hero Principal */}
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-card/80 p-6 md:p-10 shadow-xl backdrop-blur-md">
+        {/* Glows ambientales de fondo */}
+        <div className="absolute -top-24 -right-24 size-96 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 size-80 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          {/* Contenido Izquierdo */}
+          <div className="space-y-4 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary">
+              <Sparkles className="size-3.5 text-primary" />
+              Evaluación de la entrevista con IA
+            </div>
+
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">
+              Entrená tus entrevistas de trabajo en vivo
             </h1>
 
-            <div className="pt-2 flex flex-wrap gap-4">
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => openModal(null)}
-                className="px-5 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+                className="px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm flex items-center gap-2.5 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
-                <Mic className="w-4 h-4" />
+                <Mic className="size-4" />
                 Nueva sesión
               </button>
+              <Link
+                href="/envivo"
+                className="px-5 py-3 rounded-xl bg-muted/60 hover:bg-muted text-foreground font-semibold text-sm flex items-center gap-2 border border-border transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <Radio className="size-4 text-rose-500 animate-pulse" />
+                Ver Entrevistas en Vivo
+              </Link>
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary shrink-0 self-start sm:self-auto">
-            <Sparkles className="w-3.5 h-3.5" />
-            Evaluación de Voz con IA
+          {/* Tarjeta Visual Derecha / Feature Badge Grid */}
+          <div className="hidden lg:flex flex-col gap-3 p-5 rounded-2xl bg-muted/40 border border-border/60 min-w-[250px] shadow-sm backdrop-blur-xs">
+            <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
+              <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <Mic className="size-4" />
+              </div>
+              Voz Bidireccional
+            </div>
+            <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
+              <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                <Sparkles className="size-4" />
+              </div>
+              Scorecard Automático
+            </div>
+            <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
+              <div className="size-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
+                <Radio className="size-4" />
+              </div>
+              Chat & Reacciones Portal
+            </div>
           </div>
         </div>
       </section>
@@ -165,9 +201,6 @@ function NuevaSesionForm({ initialTrack }: { initialTrack: string | null }) {
     <>
       <DialogHeader>
         <DialogTitle>Nueva sesión</DialogTitle>
-        <DialogDescription>
-          Elige una especialidad. Si tienes una oferta laboral de referencia, pégala para ajustar el Blueprint.
-        </DialogDescription>
       </DialogHeader>
       <form
         onSubmit={handleSubmit}
@@ -199,6 +232,7 @@ function NuevaSesionForm({ initialTrack }: { initialTrack: string | null }) {
             id="jobDescription"
             name="jobDescription"
             placeholder="Pega la descripción del puesto para ajustar las preguntas a esa oferta"
+            className="resize-none"
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}

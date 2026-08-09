@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/envivo", label: "Entrevistas en Vivo", icon: Radio },
-  { href: "/historial", label: "Mi Historial", icon: History },
+  { href: "/historial", label: "Historial", icon: History },
   { href: "/profile", label: "Perfil", icon: UserRound },
 ];
 
