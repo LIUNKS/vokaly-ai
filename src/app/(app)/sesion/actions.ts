@@ -165,41 +165,8 @@ export async function updateSessionStateAction(
     const updates: Record<string, any> = { state };
     if (state === "concluida") {
       updates.concludedAt = new Date();
-
-      // Generar scorecard estructurado por defecto si la sesión aún no tiene uno
-      const [existingSession] = await db
-        .select({ scorecard: sessions.scorecard, trackSlug: sessions.trackSlug })
-        .from(sessions)
-        .where(eq(sessions.id, sessionId))
-        .limit(1);
-
-      if (existingSession && !existingSession.scorecard) {
-        const trackObj = TRACKS.find((t) => t.slug === existingSession.trackSlug);
-        const trackName = trackObj?.name || existingSession.trackSlug;
-        updates.scorecard = {
-          globalScore: 86,
-          technicalKnowledge: {
-            rating: 9,
-            feedback: `Demostró sólidos conocimientos conceptuales y prácticos sobre ${trackName}.`,
-          },
-          answerStructure: {
-            rating: 8,
-            feedback: "Respuestas estructuradas adecuadamente utilizando el método STAR.",
-          },
-          communicationSkill: {
-            rating: 9,
-            feedback: "Fluidez verbal excelente, vocabulario técnico adecuado y conciso.",
-          },
-          strengths: [
-            `Dominio técnico destacado en la arquitectura de ${trackName}.`,
-            "Capacidad de explicar compensaciones técnicas con claridad.",
-          ],
-          areasToImprove: [
-            "Profundizar más en métricas cuantitativas de rendimiento y escalabilidad.",
-          ],
-          executiveSummary: `El candidato superó exitosamente los criterios de evaluación para el rol en ${trackName}. Demuestra preparación para entrevistas reales.`,
-        };
-      }
+      // scorecard NO se genera acá — lo escribe el webhook de Vapi (end-of-call-report)
+      // una vez tiene el transcript completo. Queda null hasta entonces (estado pending en UI).
     }
     if (vapiCallId) {
       updates.vapiCallId = vapiCallId;

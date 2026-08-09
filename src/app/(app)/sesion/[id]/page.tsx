@@ -119,9 +119,11 @@ export default function SesionEnVivoPage() {
         }
       }, 3000);
     } else if (estado === "concluida" && !scorecardData) {
-      getSessionStateAction(targetSessionId).then((res) => {
+      // Scorecard se genera async en el webhook tras recibir el transcript — reintenta hasta que aparezca
+      interval = setInterval(async () => {
+        const res = await getSessionStateAction(targetSessionId);
         if (res.scorecard) setScorecardData(res.scorecard);
-      });
+      }, 3000);
     }
 
     return () => {
