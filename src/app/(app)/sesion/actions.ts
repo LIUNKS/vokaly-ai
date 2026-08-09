@@ -91,27 +91,6 @@ export interface UserSessionHistoryItem {
 }
 
 /**
- * Obtiene el estado actual de una sesión por su ID en tiempo real.
- */
-export async function getSessionStateAction(sessionId: string) {
-  try {
-    const isUuid = UUID_RE.test(sessionId);
-    if (!isUuid) return { state: null, scorecard: null };
-
-    const [session] = await db
-      .select({ state: sessions.state, scorecard: sessions.scorecard })
-      .from(sessions)
-      .where(eq(sessions.id, sessionId))
-      .limit(1);
-
-    if (!session) return { state: null, scorecard: null };
-    return { state: session.state as "configurando" | "en_vivo" | "concluida", scorecard: session.scorecard };
-  } catch (error) {
-    return { state: null, scorecard: null };
-  }
-}
-
-/**
  * Recupera el historial completo de sesiones prácticas para el usuario actual.
  */
 export async function getUserSessionsAction(): Promise<UserSessionHistoryItem[]> {
