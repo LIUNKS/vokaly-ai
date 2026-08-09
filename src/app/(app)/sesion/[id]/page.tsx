@@ -2,26 +2,28 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import Vapi from "@vapi-ai/web";
 import { TRACKS } from "@/lib/tracks";
 import { SessionHeader } from "./components/SessionHeader";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { CallControls } from "./components/CallControls";
 import { Clock, MessageSquare, AlertCircle } from "lucide-react";
-import { createOrGetSessionAction, updateSessionStateAction } from "../actions";
+import { getSessionAction, updateSessionStateAction } from "../actions";
 
 export default function SesionEnVivoPage() {
   const params = useParams();
-  const slugOrId = (params?.id as string) || "frontend";
+  const sessionId = params?.id as string;
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
-
-  // Estados de la sesión y persistencia en DB
   const [dbSessionId, setDbSessionId] = useState<string | null>(null);
   const [realTrackSlug, setRealTrackSlug] = useState<string | null>(null);
   const [seniority, setSeniority] = useState<string>("Senior");
   const [isCandidate, setIsCandidate] = useState<boolean>(true);
-  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(isUuid);
+  const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [candidateName, setCandidateName] = useState<string>("Candidato");
+  const [blueprintContent, setBlueprintContent] = useState<string>("");
+  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(true);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
   const [estado, setEstado] = useState<"configurando" | "en_vivo" | "concluida">("configurando");
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -31,53 +33,56 @@ export default function SesionEnVivoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Track activo resuelto desde la BD o la URL
-  const activeTrack = TRACKS.find((t) => t.slug === (realTrackSlug || slugOrId)) || TRACKS[0];
+  const activeTrack = TRACKS.find((t) => t.slug === realTrackSlug) || TRACKS[0];
 
-  // Instancia Vapi ref y sessionId ref para callbacks
   const vapiRef = useRef<Vapi | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dbSessionIdRef = useRef<string | null>(null);
 
-  // 1. Inicializar o recuperar sesión en DB
+  // Nunca crea la sesión acá, solo la busca — ver getSessionAction.
   useEffect(() => {
     let isMounted = true;
-    createOrGetSessionAction(slugOrId).then((res) => {
-      if (isMounted) {
-        if (res.id) {
-          setDbSessionId(res.id);
-          dbSessionIdRef.current = res.id;
-          setEstado(res.state);
-          setRealTrackSlug(res.trackSlug);
-          if (res.yearsOfExperience) {
-            setSeniority(`${res.yearsOfExperience} años`);
-          }
-          if (typeof res.isCandidate === "boolean") {
-            setIsCandidate(res.isCandidate);
-          }
-
-          // Sincronizar el reloj del espectador con la hora real de inicio en DB (createdAt)
-          if (res.state === "en_vivo") {
-            let elapsedSec = 0;
-            if (res.createdAt) {
-              elapsedSec = Math.max(
-                0,
-                Math.floor((Date.now() - new Date(res.createdAt).getTime()) / 1000)
-              );
-            }
-            setDurationSeconds(elapsedSec);
-            startTimer(elapsedSec);
-          }
-        }
+    getSessionAction(sessionId).then((res) => {
+      if (!isMounted) return;
+      if (!res) {
+        setSessionNotFound(true);
         setIsSessionLoading(false);
+        return;
       }
+
+      setDbSessionId(res.id);
+      dbSessionIdRef.current = res.id;
+      setEstado(res.state);
+      setRealTrackSlug(res.trackSlug);
+      if (res.yearsOfExperience) {
+        setSeniority(`${res.yearsOfExperience} años`);
+      }
+      if (typeof res.isCandidate === "boolean") {
+        setIsCandidate(res.isCandidate);
+      }
+      if (res.candidateId) setCandidateId(res.candidateId);
+      if (res.candidateName) setCandidateName(res.candidateName);
+      if (res.blueprintContent) setBlueprintContent(res.blueprintContent);
+
+      // Sincronizar el reloj del espectador con la hora real de inicio en DB (createdAt)
+      if (res.state === "en_vivo") {
+        let elapsedSec = 0;
+        if (res.createdAt) {
+          elapsedSec = Math.max(
+            0,
+            Math.floor((Date.now() - new Date(res.createdAt).getTime()) / 1000)
+          );
+        }
+        setDurationSeconds(elapsedSec);
+        startTimer(elapsedSec);
+      }
+      setIsSessionLoading(false);
     });
     return () => {
       isMounted = false;
     };
-  }, [slugOrId]);
+  }, [sessionId]);
 
-  // Inicializar Vapi Web SDK y suscribir eventos
   useEffect(() => {
     const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY;
     console.log("[Vapi Debug] Public Key cargada:", publicKey ? `${publicKey.substring(0, 8)}...` : "NO ENCONTRADA");
@@ -118,7 +123,7 @@ export default function SesionEnVivoPage() {
         if (message?.type === "call-ended" || message?.endedReason) {
           const reason = message.endedReason;
           console.warn(`[Vapi Call Ended Reason]: ${reason || "No especificado"}`);
-          
+
           if (reason === "silence-timed-out") {
             setErrorMessage("ℹ️ La entrevista finalizó por inactividad/silencio prolongado (silence-timed-out).");
             setEstado("concluida");
@@ -190,7 +195,6 @@ export default function SesionEnVivoPage() {
     }
   }, []);
 
-  // Timer helper
   const startTimer = (initialSecs: number = 0) => {
     if (timerRef.current) clearInterval(timerRef.current);
     setDurationSeconds(initialSecs);
@@ -203,26 +207,24 @@ export default function SesionEnVivoPage() {
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  // Formato mm:ss
   const formatTime = (totalSec: number) => {
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Handlers de botones
   const handleStartCall = async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
     const targetSessionId = dbSessionId || dbSessionIdRef.current;
 
-    // 1. Pre-verificación de permisos de micrófono para evitar cierres repentinos de WebRTC
+    // Pedir permiso de mic explícito antes de vapi.start() — sin esto el WebRTC a veces se cierra solo apenas conecta.
     if (typeof window !== "undefined" && navigator?.mediaDevices?.getUserMedia) {
       try {
         console.log("[MediaDevices] Solicitando permiso explícito de micrófono...");
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Detener los tracks de prueba inmediatamente para que Vapi los utilice
+        // Vapi abre su propio stream — este solo era para forzar el prompt de permiso.
         stream.getTracks().forEach((track) => track.stop());
         console.log("[MediaDevices] Permiso de micrófono concedido exitosamente.");
       } catch (micErr: any) {
@@ -239,7 +241,6 @@ export default function SesionEnVivoPage() {
       }
     }
 
-    // 2. Actualizar estado en DB localmente y en Vapi
     setEstado("en_vivo");
     if (targetSessionId) {
       updateSessionStateAction(targetSessionId, "en_vivo");
@@ -254,12 +255,22 @@ export default function SesionEnVivoPage() {
       try {
         console.log("[Vapi WebRTC] Conectando llamada WebRTC con Vapi Assistant:", assistantId);
         startTimer();
+        // Ambos ya resueltos acá (no placeholders) — el Assistant en Vapi Dashboard solo tiene
+        // {{first_message}}/{{blueprint_content}}, nada que templatizar de su lado.
+        const firstMessage = `Hola ${candidateName}, bienvenido/a a tu sesión de práctica para la posición de ${activeTrack.name} en Empresa de Producto SaaS. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.`;
+
         await vapi.start(assistantId, {
           variableValues: {
-            sessionId: targetSessionId || slugOrId,
+            first_message: firstMessage,
+            blueprint_content: blueprintContent,
           },
-        } as any);
-        console.log("[Vapi WebRTC] Petición vapi.start() enviada con éxito.");
+          metadata: {
+            sessionId: targetSessionId || sessionId,
+            candidatoId: candidateId || undefined,
+            trackSlug: realTrackSlug || sessionId,
+          },
+        });
+        console.log("[Vapi WebRTC] Petición enviada con éxito.");
         setIsLoading(false);
       } catch (err: any) {
         console.error("[Vapi WebRTC] Error al ejecutar vapi.start():", err);
@@ -296,7 +307,6 @@ export default function SesionEnVivoPage() {
       updateSessionStateAction(targetSessionId, "en_vivo");
     }
 
-    // Simular alternancia de habla (Entrevistador ➔ Candidato)
     setIsSpeaking(true);
     setSpeakerRole("assistant");
     setVolumeLevel(0.4);
@@ -338,9 +348,22 @@ export default function SesionEnVivoPage() {
     setIsMuted(newMuted);
   };
 
+  if (sessionNotFound) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+        <AlertCircle className="size-8 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          Esta sesión no existe. Iniciá una nueva desde el inicio.
+        </p>
+        <Link href="/" className="text-sm text-primary underline underline-offset-4">
+          Volver al inicio
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-between gap-6 py-2">
-      {/* 1. Header de Sesión / Skeleton durante carga inicial por UUID */}
       {isSessionLoading ? (
         <div className="w-full p-6 rounded-2xl bg-card border border-border animate-pulse flex items-center justify-between">
           <div className="space-y-2">
@@ -358,7 +381,6 @@ export default function SesionEnVivoPage() {
         />
       )}
 
-      {/* Alerta de Error si aplica */}
       {errorMessage && (
         <div className="w-full max-w-xl mx-auto p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-xs flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
@@ -366,14 +388,12 @@ export default function SesionEnVivoPage() {
         </div>
       )}
 
-      {/* Indicador Modo Espectador si no es el candidato */}
       {!isCandidate && (
         <div className="w-full max-w-xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs text-center font-medium flex items-center justify-center gap-2">
           <span>👀 Estás en <strong>Modo Espectador</strong> presenciando la transmisión en vivo de esta entrevista.</span>
         </div>
       )}
 
-      {/* 2. Cuerpo Principal / Visualizador de Audio */}
       <div className="w-full flex flex-col items-center justify-center">
         <AudioVisualizer
           isSpeaking={isSpeaking}
@@ -382,7 +402,6 @@ export default function SesionEnVivoPage() {
           candidatoNombre={isCandidate ? "Tú (Candidato)" : "Candidato en Vivo"}
         />
 
-        {/* Info extra y Timer */}
         {estado === "en_vivo" && (
           <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono bg-card px-4 py-2 rounded-full border border-border my-2 shadow-xs">
             <span className="flex items-center gap-1.5 text-foreground font-medium">
@@ -392,7 +411,7 @@ export default function SesionEnVivoPage() {
             <span className="text-border">•</span>
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <MessageSquare className="size-3.5 text-primary" />
-              Sesión ID: {(dbSessionId || slugOrId).substring(0, 8)}...
+              Sesión ID: {(dbSessionId || sessionId).substring(0, 8)}...
             </span>
           </div>
         )}
@@ -404,7 +423,6 @@ export default function SesionEnVivoPage() {
         )}
       </div>
 
-      {/* 3. Barra Inferior de Controles (Solo visible para el Candidato) */}
       {isCandidate && (
         <div className="w-full">
           <CallControls
