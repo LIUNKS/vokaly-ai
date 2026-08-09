@@ -23,9 +23,10 @@ const TRACK_ITEMS = TRACKS.map((t) => ({ value: t.slug, label: t.name }));
 export default async function NuevaSesionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; track?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, track } = await searchParams;
+  const defaultTrack = TRACKS.some((t) => t.slug === track) ? track! : null;
 
   return (
     <Card>
@@ -39,7 +40,12 @@ export default async function NuevaSesionPage({
         <form action={crearSesion} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="trackSlug">Especialidad</Label>
-            <Select name="trackSlug" items={TRACK_ITEMS} required>
+            <Select
+              name="trackSlug"
+              items={TRACK_ITEMS}
+              defaultValue={defaultTrack}
+              required
+            >
               <SelectTrigger id="trackSlug" className="w-full">
                 <SelectValue placeholder="Elige una especialidad" />
               </SelectTrigger>
