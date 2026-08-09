@@ -54,6 +54,8 @@ export async function updateSession(request: NextRequest) {
   if (user && !isAuthRoute && !isProfileRoute) {
     const [profile] = await db
       .select({
+        fullName: users.fullName,
+        nickname: users.nickname,
         careerPath: users.careerPath,
         yearsOfExperience: users.yearsOfExperience,
         description: users.description,
@@ -62,7 +64,11 @@ export async function updateSession(request: NextRequest) {
       .where(eq(users.id, user.id));
 
     const profileIncomplete =
-      !profile?.careerPath || !profile?.yearsOfExperience || !profile?.description;
+      !profile?.fullName ||
+      !profile?.nickname ||
+      !profile?.careerPath ||
+      !profile?.yearsOfExperience ||
+      !profile?.description;
 
     if (profileIncomplete) {
       const url = request.nextUrl.clone();

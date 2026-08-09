@@ -15,6 +15,13 @@
       "when": 1786221074638,
       "tag": "0001_naive_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786241987352,
+      "tag": "0002_many_wraith",
+      "breakpoints": true
     }
   ]
 }
