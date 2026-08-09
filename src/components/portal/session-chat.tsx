@@ -157,7 +157,7 @@ function ChatRoom({
 
   return (
     <div className="relative flex h-[450px] flex-col rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm overflow-hidden">
-      
+
       {/* 🚀 Emojis flotantes: Nacen desde abajo a la derecha y flotan hacia arriba */}
       <div className="pointer-events-none absolute bottom-16 right-6 z-20 flex flex-col items-center">
         {activeReactions.map((r) => (
@@ -177,7 +177,7 @@ function ChatRoom({
       <div className="mb-4 flex-1 overflow-y-auto space-y-2 pr-1">
         {transcriptLines.length > 0 && (
           <div className="mb-3 space-y-1 border-b border-border pb-3">
-            <div className="text-xs text-muted-foreground">📝 Transcripción en vivo</div>
+            <div className="text-xs text-muted-foreground">Transcripción en vivo</div>
             {transcriptLines.map((m) => (
               <div key={m.id} className="text-sm">
                 <span className="font-semibold text-primary">
@@ -191,8 +191,8 @@ function ChatRoom({
 
         <div className="border-b border-border pb-2 text-xs text-muted-foreground">
           {phase === 'concluida'
-            ? '📜 Historial de sugerencias y chat de la sesión'
-            : `💬 Chat en vivo (${roleLabel})`}
+            ? 'Historial de sugerencias y chat de la sesión'
+            : `Chat en vivo (${roleLabel})`}
         </div>
 
         {chatMessagesOnly.length === 0 ? (
@@ -295,9 +295,9 @@ export function SessionChat({ sessionId, role, phase, userName }: SessionChatPro
     return null;
   }
 
-if (role === 'candidate' && phase === 'en_vivo') {
-  return null;
-}
+  if (role === 'candidate' && phase === 'en_vivo') {
+    return null;
+  }
 
   return (
     <ChatRoom

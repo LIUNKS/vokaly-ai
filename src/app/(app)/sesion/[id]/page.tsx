@@ -293,19 +293,35 @@ export default function SesionEnVivoPage() {
       const onMessage = (message: any) => {
         // Capturar transcripción en tiempo real emitida por el Web SDK de Vapi
         if (message?.type === "transcript" || message?.transcript) {
-          const role = (message.role || message.speaker) === "user" ? "Candidato" : "Asistente";
+          const roleKey = (message.role || message.speaker) === "user" ? "user" : "assistant";
+          const roleLabel = roleKey === "user" ? "Candidato" : "Asistente";
           const text = message.transcript || message.text;
           const transcriptType = message.transcriptType || "final";
 
           if (text && typeof text === "string" && text.trim().length > 0) {
             if (transcriptType === "final") {
-              const formattedLine = `${role}: ${text.trim()}`;
+              const formattedLine = `${roleLabel}: ${text.trim()}`;
               liveTranscriptLinesRef.current.push(formattedLine);
               const combinedText = liveTranscriptLinesRef.current.join("\n");
               setTranscript(combinedText);
 
               if (dbSessionIdRef.current) {
                 updateSessionTranscriptAction(dbSessionIdRef.current, undefined, combinedText);
+              }
+
+              // Transmitir en vivo por Portal para espectadores y chat
+              try {
+                const targetId = dbSessionIdRef.current || sessionId;
+                if (targetId) {
+                  portalClient.channel(targetId).send({
+                    content: {
+                      transcript: text.trim(),
+                      role: roleKey,
+                    },
+                  });
+                }
+              } catch (portalErr) {
+                // Silencioso si Portal no está listo
               }
             }
           }
@@ -569,13 +585,20 @@ export default function SesionEnVivoPage() {
         >
           <div className="w-full flex flex-col items-center justify-center">
             {isCandidate ? (
-              <AudioVisualizer
-                isSpeaking={isSpeaking}
-                speakerRole={speakerRole}
-                volumeLevel={volumeLevel}
-                candidatoNombre="Tú (Candidato)"
-                estado={estado}
-              />
+              <>
+                <AudioVisualizer
+                  isSpeaking={isSpeaking}
+                  speakerRole={speakerRole}
+                  volumeLevel={volumeLevel}
+                  candidatoNombre="Tú (Candidato)"
+                  estado={estado}
+                />
+                {estado === "en_vivo" && (
+                  <div className="w-full max-w-xl">
+                    <LiveTranscriptCard sessionId={currentSessionId} candidateName={candidateName} />
+                  </div>
+                )}
+              </>
             ) : (
               <LiveTranscriptCard sessionId={currentSessionId} candidateName={candidateName} />
             )}

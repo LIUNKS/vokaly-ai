@@ -9,6 +9,8 @@ import { eq, desc } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { ConcludedSessionsList } from "./concluded-sessions-list";
 
+export const dynamic = "force-dynamic";
+
 export default async function EntrevistasEnVivoPage() {
   let dbActiveSessions: any[] = [];
   let dbConcludedSessions: any[] = [];
