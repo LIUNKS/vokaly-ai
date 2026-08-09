@@ -130,9 +130,6 @@ export function HistorialClient({
             <History className="size-6 text-primary" />
             Mi Historial de Entrevistas
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Consulta todas tus sesiones evaluadas, filtra por estado y revisa tus scorecards completos.
-          </p>
         </div>
 
         <Link href="/" className={buttonVariants({ variant: "default", size: "sm" })}>
@@ -234,12 +231,12 @@ export function HistorialClient({
               const isLive = s.state === "en_vivo";
               const dateStr = s.createdAt
                 ? new Date(s.createdAt).toLocaleDateString("es-ES", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
                 : "Reciente";
 
               const globalScore = s.scorecard?.globalScore || 86;

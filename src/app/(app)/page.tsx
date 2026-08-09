@@ -70,9 +70,6 @@ export default function Home() {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
               Entrena tus entrevistas de trabajo en vivo
             </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Participa en sesiones reales evaluadas por nuestro agente de voz conversacional Vapi AI. Selecciona tu especialidad e inicia tu práctica.
-            </p>
 
             <div className="pt-2 flex flex-wrap gap-4">
               <button

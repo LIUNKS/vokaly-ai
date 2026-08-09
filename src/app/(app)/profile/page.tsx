@@ -55,9 +55,6 @@ export default async function ProfilePage({
       <Card>
         <CardHeader>
           <CardTitle>Completa tu perfil</CardTitle>
-          <CardDescription>
-            Lo usamos para armar tu Blueprint de entrevista evaluada.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={saveProfile} className="flex flex-col gap-4">
@@ -177,9 +174,6 @@ export default async function ProfilePage({
               <History className="size-5 text-primary" />
               Historial de Entrevistas y Scorecards
             </h3>
-            <p className="text-xs text-muted-foreground">
-              Accede a la página dedicada para filtrar tus entrevistas por estado (Concluida, En Vivo, Configurando) u ordenar por fecha.
-            </p>
           </div>
           <Link
             href="/historial"
