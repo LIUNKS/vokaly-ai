@@ -59,6 +59,9 @@ export default function SesionEnVivoPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 
+  // Estado para bloqueo temporal mientras se leen y preparan los datos del modelo
+  const [isPreparing, setIsPreparing] = useState(true);
+
   const activeTrack = TRACKS.find((t) => t.slug === realTrackSlug) || TRACKS[0];
 
   const vapiRef = useRef<Vapi | null>(null);
@@ -127,6 +130,7 @@ export default function SesionEnVivoPage() {
       if (!res) {
         setSessionNotFound(true);
         setIsSessionLoading(false);
+        setIsPreparing(false);
         return;
       }
 
@@ -162,6 +166,11 @@ export default function SesionEnVivoPage() {
       loadAndSyncTranscript(res.id);
 
       setIsSessionLoading(false);
+
+      // Desbloquear el botón de inicio tras 2 segundos de preparación
+      setTimeout(() => {
+        if (isMounted) setIsPreparing(false);
+      }, 2000);
     });
     return () => {
       isMounted = false;
@@ -565,6 +574,7 @@ export default function SesionEnVivoPage() {
                 speakerRole={speakerRole}
                 volumeLevel={volumeLevel}
                 candidatoNombre="Tú (Candidato)"
+                estado={estado}
               />
             ) : (
               <LiveTranscriptCard sessionId={currentSessionId} candidateName={candidateName} />
@@ -601,6 +611,7 @@ export default function SesionEnVivoPage() {
                   onEndCall={handleEndCall}
                   onToggleMute={handleToggleMute}
                   isLoading={isLoading}
+                  isPreparing={isPreparing}
                 />
               </div>
             )}

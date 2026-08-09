@@ -22,7 +22,7 @@ interface ConcludedSessionsListProps {
 
 export function ConcludedSessionsList({
   sessions,
-  itemsPerPage = 6,
+  itemsPerPage = 10,
 }: ConcludedSessionsListProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -47,6 +47,39 @@ export function ConcludedSessionsList({
 
   const goToPrevPage = () => {
     if (safeCurrentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
+  // Generar números de página mostrando hasta 10 páginas por bloque con elipsis (...)
+  const getPageNumbers = (): (number | string)[] => {
+    const maxVisible = 10;
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    let startPage = Math.max(1, safeCurrentPage - 4);
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    const pages: (number | string)[] = [];
+
+    if (startPage > 1) {
+      pages.push(1);
+      if (startPage > 2) pages.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pages.push("...");
+      if (!pages.includes(totalPages)) pages.push(totalPages);
+    }
+
+    return pages;
   };
 
   return (
@@ -81,7 +114,7 @@ export function ConcludedSessionsList({
 
       {/* Barra de Controles de Paginación */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2 border-t border-border/60">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
           <p className="text-xs text-muted-foreground">
             Mostrando <span className="font-medium text-foreground">{startIndex + 1}</span> -{" "}
             <span className="font-medium text-foreground">
@@ -96,25 +129,31 @@ export function ConcludedSessionsList({
               size="sm"
               onClick={goToPrevPage}
               disabled={safeCurrentPage === 1}
-              className="h-8 px-2.5 text-xs gap-1"
+              className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
             >
               <ChevronLeft className="size-4" />
               <span className="hidden sm:inline">Anterior</span>
             </Button>
 
-            {/* Números de página */}
+            {/* Números de página con elipsis */}
             <div className="flex items-center gap-1 px-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === safeCurrentPage ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setCurrentPage(pageNum)}
-                  className="size-8 p-0 text-xs font-semibold"
-                >
-                  {pageNum}
-                </Button>
-              ))}
+              {getPageNumbers().map((pageNum, idx) =>
+                typeof pageNum === "number" ? (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === safeCurrentPage ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="size-8 p-0 text-xs font-semibold cursor-pointer"
+                  >
+                    {pageNum}
+                  </Button>
+                ) : (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground">
+                    ...
+                  </span>
+                )
+              )}
             </div>
 
             <Button
@@ -122,7 +161,7 @@ export function ConcludedSessionsList({
               size="sm"
               onClick={goToNextPage}
               disabled={safeCurrentPage === totalPages}
-              className="h-8 px-2.5 text-xs gap-1"
+              className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
             >
               <span className="hidden sm:inline">Siguiente</span>
               <ChevronRight className="size-4" />
