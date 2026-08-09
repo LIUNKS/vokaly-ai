@@ -1,5 +1,4 @@
 import { SessionChat } from '@/components/portal/session-chat';
-import { EphemeralReactions } from '@/components/portal/ephemeral-reactions';
 
 interface SessionPageProps {
   params: Promise<{ id: string }>;
@@ -15,7 +14,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <h1 className="text-xl font-bold">Sesión de Entrevista #{id}</h1>
-        <EphemeralReactions sessionId={id} />
+        {/* <EphemeralReactions sessionId={id} /> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
