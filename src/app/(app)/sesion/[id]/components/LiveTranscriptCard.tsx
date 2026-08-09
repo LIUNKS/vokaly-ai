@@ -16,7 +16,7 @@ interface TranscriptContent {
 }
 
 export function LiveTranscriptCard({ sessionId, candidateName }: LiveTranscriptCardProps) {
-  const { messages } = useChannel<TranscriptContent>({ channelId: sessionId });
+  const { messages } = useChannel<TranscriptContent>({ channelId: `${sessionId}:transcript` });
   const lines = messages.filter((m) => m.content?.transcript);
   const last = lines[lines.length - 1];
 

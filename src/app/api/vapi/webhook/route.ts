@@ -142,7 +142,7 @@ export async function POST(req: Request) {
         // canal (y su ventana de historial) con updates parciales por palabra
         if (sessionId && payloadSource?.transcriptType === "final" && payloadSource?.transcript && !mockMode) {
           try {
-            await portalClient.channel(sessionId).send({
+            await portalClient.channel(`${sessionId}:transcript`).send({
               content: { role: payloadSource.role, transcript: payloadSource.transcript },
             });
           } catch (portalErr) {
