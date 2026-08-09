@@ -13,12 +13,19 @@ export async function AppSidebar() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [profile] = user
-    ? await db
+  let profile: { fullName: string | null; nickname: string | null } | undefined;
+
+  if (user) {
+    try {
+      const [result] = await db
         .select({ fullName: users.fullName, nickname: users.nickname })
         .from(users)
-        .where(eq(users.id, user.id))
-    : [];
+        .where(eq(users.id, user.id));
+      profile = result;
+    } catch (err) {
+      console.error("Error al obtener perfil en AppSidebar:", err);
+    }
+  }
 
   return (
     <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-64 md:flex-col md:border-r md:bg-background">
@@ -34,14 +41,14 @@ export async function AppSidebar() {
         {profile && (
           <div className="flex min-w-0 flex-1 items-center gap-3 px-1">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
-              {profile.fullName?.charAt(0).toUpperCase()}
+              {profile.fullName?.charAt(0).toUpperCase() || "U"}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium leading-tight">
-                {profile.fullName}
+                {profile.fullName || "Usuario"}
               </p>
               <p className="truncate text-xs text-muted-foreground leading-tight">
-                {profile.nickname}
+                {profile.nickname || ""}
               </p>
             </div>
           </div>
