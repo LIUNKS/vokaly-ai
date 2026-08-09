@@ -20,55 +20,41 @@ A diferencia de un asistente de voz convencional (atención al cliente, ventas o
 
 Al iniciar o configurar la llamada mediante el SDK de Vapi (`@vapi-ai/web`) o la API server-side, la sesión se parametriza con cuatro componentes principales:
 
+> **Nota de implementación:** `firstMessage` y `systemPrompt` NO se arman con
+> mustache multi-variable en el Assistant del Vapi Dashboard. `blueprint.ts`
+> (Track A) ya le pide al LLM el prompt final resuelto — sin placeholders
+> propios — así que mantener una plantilla paralela en el Dashboard es
+> trabajo duplicado y frágil (dos lugares para sincronizar cada vez que
+> cambia el texto). En cambio, la app arma ambos strings completos y los
+> manda como dos `variableValues` opacos (§2.3); el Dashboard solo tiene
+> `{{first_message}}` / `{{blueprint_content}}` como firstMessage/systemPrompt.
+> El modelo/voz de la conversación se sigue configurando en el Dashboard
+> (`stack.md`) — esto no lo toca.
+
 ### 2.1 `firstMessage` (Mensaje de Bienvenida)
 
-Primer turno de habla del agente al conectar la llamada.
+Primer turno de habla del agente al conectar la llamada. Armado en la app
+(`sesion/[id]/page.tsx`) con los datos ya resueltos de la sesión:
 
 ```text
-Hola {{candidato_nombre}}, bienvenido/a a tu sesión de práctica para la posición de {{rol_nombre}} en {{empresa_ref}}. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.
+Hola {candidato_nombre}, bienvenido/a a tu sesión de práctica para la posición de {rol_nombre} en {empresa_ref}. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.
 ```
 
 ### 2.2 `systemPrompt` (`blueprint_content`)
 
-Prompt de sistema generado por Vercel AI Gateway (Track A) o mockeado en desarrollo (Track B).
+Prompt de sistema generado por Groq vía Vercel AI SDK (`src/lib/blueprint.ts`,
+Track A) al crear la sesión — identidad, estilo de voz, dinámica de entrevista,
+rúbrica y restricciones de seguridad ya resueltos en un único texto final, sin
+placeholders. Se persiste en `sessions.blueprintContent` y viaja tal cual.
 
-```markdown
-# Identidad y Rol
-Eres un Entrevistador Técnico Senior especialista en {{track_nombre}} para la empresa {{empresa_ref}}.
-Tu objetivo principal es evaluar al candidato {{candidato_nombre}} (Seniority pretendido: {{seniority_candidato}}) siguiendo la rúbrica de evaluación provista.
+### 2.3 `variableValues`
 
-# Estilo de Conversación por Voz
-- Mantén un tono profesional, riguroso pero respetuoso y aliento constante.
-- Responde con oraciones breves y directas (máximo 2 a 3 frases por turno).
-- Formula ÚNICAMENTE UNA PREGUNTA a la vez. Espera la respuesta del candidato antes de continuar.
-- Evita usar caracteres especiales, símbolos, emojis, listas complejas o URLs para evitar lecturas literales erróneas por el motor TTS.
-
-# Dinámica de la Entrevista
-1. Inicia evaluando las preguntas clave del Blueprint: {{preguntas_guia}}.
-2. En preguntas conceptuales o de experiencia, evalúa si la respuesta sigue la estructura STAR (Situación, Tarea, Acción, Resultado).
-3. Si el candidato tiene dificultades o duda, ofrece una breve pista (hint) sin regalar la respuesta completa.
-4. Al cubrir los temas o al cumplirse el tiempo/solicitud del candidato, despídete cordialmente y concluye la llamada.
-
-# Rúbrica y Guía de Evaluación
-{{rubrica_prosa}}
-
-# Restricciones de Seguridad
-- Responde siempre en idioma español.
-- No reveles puntuaciones ni retroalimentación detallada durante la llamada.
-- Mantente estrictamente en tu rol de entrevistador técnico.
-```
-
-### 2.3 `variableValues` (Variables dinámicas)
-
-Valores inyectados en la plantilla del prompt y mensaje inicial:
+Solo dos valores opacos, ya resueltos — nada que el Dashboard deba templatizar más:
 
 ```json
 {
-  "candidato_nombre": "Johan",
-  "rol_nombre": "Frontend React Developer",
-  "empresa_ref": "Tech Corp",
-  "seniority_candidato": "senior",
-  "track_nombre": "Frontend Development"
+  "first_message": "Hola Johan, bienvenido/a a tu sesión de práctica para la posición de Frontend en Empresa de Producto SaaS. Soy tu entrevistador/a hoy. Cuando estés listo/a, dime y comenzamos con la primera pregunta.",
+  "blueprint_content": "# Identidad y Rol\n..."
 }
 ```
 
@@ -154,10 +140,8 @@ Tu objetivo es evaluar a Johan para la posición de Senior Frontend Developer.
 Haz 1 pregunta a la vez sobre React Server Components, State Management y Rendimiento.
 Mantén respuestas breves (máximo 3 frases) y tono profesional.`,
     variableValues: {
-      candidato_nombre: "Johan",
-      rol_nombre: "Frontend React Developer",
-      empresa_ref: "Tech Corp",
-      seniority_candidato: "senior"
+      first_message: "Hola Johan, bienvenido/a a tu sesión de práctica para la posición de Frontend React Developer en Tech Corp. Soy tu entrevistador/a hoy. ¿Listo para comenzar?",
+      blueprint_content: "Eres un Entrevistador Técnico Senior especialista en Frontend React..."
     },
     metadata: {
       sessionId: "b4e2d3c4-1234-5678-9abc-def123456789",

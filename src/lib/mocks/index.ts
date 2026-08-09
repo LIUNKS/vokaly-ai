@@ -1,11 +1,5 @@
 import { VapiSessionConfig } from "@/types/vapi";
 
-/**
- * ARCHIVO UNIFICADO DE MOCKS - VOKALY PREP
- * Consolida todos los mocks de dominio, contratos, Vapi y Portal en un solo lugar.
- */
-
-// 1. Mock de Candidato
 export interface CandidatoMock {
   id: string;
   userId: string;
@@ -24,7 +18,6 @@ export const CANDIDATO_MOCK: CandidatoMock = {
   objetivoProfesional: "Preparar entrevistas para roles de Senior Frontend Engineer en empresas Tech global.",
 };
 
-// 2. Mock de Blueprint
 export interface BlueprintMock {
   id: string;
   trackSlug: string;
@@ -58,7 +51,6 @@ Mantén respuestas breves (máximo 3 frases) y tono profesional.`,
   ],
 };
 
-// 3. Mock de Sesión Vapi
 export interface VapiMockSession {
   sessionId: string;
   candidatoNombre: string;
@@ -80,11 +72,8 @@ export const VAPI_SESSION_MOCK: VapiMockSession = {
     firstMessage: `Hola ${CANDIDATO_MOCK.nombre}, bienvenido/a a tu sesión de práctica para la posición de ${BLUEPRINT_MOCK.trackNombre} en ${BLUEPRINT_MOCK.empresaRolRef}. Soy tu entrevistador/a hoy. ¿Listo/a para comenzar?`,
     systemPrompt: BLUEPRINT_MOCK.instruccionesVapi,
     variableValues: {
-      candidato_nombre: CANDIDATO_MOCK.nombre,
-      rol_nombre: BLUEPRINT_MOCK.trackNombre,
-      empresa_ref: BLUEPRINT_MOCK.empresaRolRef,
-      seniority_candidato: CANDIDATO_MOCK.seniority,
-      track_nombre: BLUEPRINT_MOCK.trackNombre,
+      first_message: `Hola ${CANDIDATO_MOCK.nombre}, bienvenido/a a tu sesión de práctica para la posición de ${BLUEPRINT_MOCK.trackNombre} en ${BLUEPRINT_MOCK.empresaRolRef}. Soy tu entrevistador/a hoy. ¿Listo/a para comenzar?`,
+      blueprint_content: BLUEPRINT_MOCK.instruccionesVapi,
     },
     metadata: {
       sessionId: "b4e2d3c4-1234-5678-9abc-def123456789",
@@ -94,7 +83,6 @@ export const VAPI_SESSION_MOCK: VapiMockSession = {
   },
 };
 
-// 4. Mock de Scorecard
 export interface RatingFeedbackMock {
   rating: number;
   feedback: string;
@@ -138,7 +126,6 @@ export const SCORECARD_MOCK: ScorecardMock = {
   executiveSummary: "El candidato demostró nivel Senior sólido para el rol en Tech Corp.",
 };
 
-// 5. Mock de Autenticación / JWT Portal
 export interface PortalAuthMock {
   sessionId: string;
   role: "candidate" | "interviewer" | "spectator";
