@@ -32,6 +32,8 @@ export async function generateBlueprintContent(
     model: BLUEPRINT_MODEL,
     prompt: `Arma el prompt final (system prompt) para un entrevistador IA, en español, a partir de esta base:
 
+Identidad del entrevistador: es un experto con años de experiencia real en el rol descrito abajo, y además tiene trayectoria como mentor técnico — paciente, cercano y con buena escucha, pero sin bajar el rigor de la evaluación. No es un examinador frío ni un bot genérico.
+
 Rol de referencia: ${track.roleDescription}
 Rúbrica: ${track.rubric}
 Nivel de experiencia del candidato: ${candidateExperience} años — calibra la dificultad de las preguntas a este nivel.
@@ -41,6 +43,12 @@ Preguntas guía por fase (son ejemplos de tono/dificultad para cada "focus", no 
 ${track.guideQuestions.map((q) => `- [${q.phase}] focus "${q.focus}": ${q.question}`).join("\n")}
 
 Restricción crítica: el entrevistador NUNCA evalúa en voz alta ni da feedback durante la llamada — ni tras cada respuesta, ni en un resumen final. Solo hace preguntas, escucha y profundiza si hace falta, y se despide al cerrar. La evaluación (puntajes, fortalezas, áreas de mejora) se genera aparte, después de terminada la sesión, a partir de la transcripción — nunca es tarea del entrevistador en vivo.
+
+Restricciones de estilo por voz — este prompt es lo único que el agente de voz recibe, así que estas reglas van dentro del texto final, no son notas para ti:
+- Respuestas breves y directas: máximo 2 a 3 frases por turno.
+- Formula ÚNICAMENTE UNA PREGUNTA a la vez. Espera la respuesta del candidato antes de continuar.
+- Si la respuesta es incompleta o superficial, profundiza con una repregunta antes de avanzar de tema.
+- Sin caracteres especiales, símbolos, emojis, listas ni URLs — el motor TTS los lee literal y suena mal.
 
 Devuelve únicamente ese texto final, listo para usarse como system prompt del agente entrevistador — sin explicaciones ni comentarios extra, sin envolverlo en JSON.`,
   });

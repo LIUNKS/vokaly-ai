@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-/**
- * Metadata adjunta a cada llamada de Vapi para correlacionar con la sesión de Vokaly Prep.
- */
 export const VapiMetadataSchema = z.object({
   sessionId: z.string().uuid().optional(),
   candidatoId: z.string().optional(),
@@ -11,10 +8,7 @@ export const VapiMetadataSchema = z.object({
 
 export type VapiMetadata = z.infer<typeof VapiMetadataSchema>;
 
-/**
- * Schema para validar payloads entrantes de Webhooks de Vapi (Trust Boundary).
- * Acepta tanto eventos directos como envueltos por Vapi Server.
- */
+// Trust boundary — Vapi Server a veces envuelve el evento en rawBody.message, a veces lo manda directo.
 export const VapiWebhookPayloadSchema = z.object({
   type: z.string(),
   call: z
@@ -32,21 +26,18 @@ export const VapiWebhookPayloadSchema = z.object({
 export type VapiWebhookPayload = z.infer<typeof VapiWebhookPayloadSchema>;
 
 /**
- * Parámetros dinámicos para el prompt de Vapi.
+ * El firstMessage/systemPrompt del Assistant en Vapi Dashboard son solo
+ * `{{first_message}}` / `{{blueprint_content}}` — el texto ya viene resuelto
+ * desde acá (blueprint.ts genera el prompt final, sin placeholders propios),
+ * así el Dashboard no mantiene una plantilla en paralelo a la nuestra.
  */
 export const VapiVariableValuesSchema = z.object({
-  candidato_nombre: z.string(),
-  rol_nombre: z.string(),
-  empresa_ref: z.string(),
-  seniority_candidato: z.string(),
-  track_nombre: z.string().optional(),
+  first_message: z.string(),
+  blueprint_content: z.string(),
 });
 
 export type VapiVariableValues = z.infer<typeof VapiVariableValuesSchema>;
 
-/**
- * Configuración completa necesaria para iniciar una sesión con Vapi.
- */
 export const VapiSessionConfigSchema = z.object({
   firstMessage: z.string(),
   systemPrompt: z.string(),
