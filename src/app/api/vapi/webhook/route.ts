@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { VapiWebhookPayloadSchema } from "@/types/vapi";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
+import { generateScorecard } from "@/lib/scorecard";
 
 /**
  * Comprueba si el entorno debe operar en modo MOCK o si no hay base de datos disponible.
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
           try {
             const vapiCallId = payload.call?.id;
             const fullTranscript = (payload as any).artifact?.transcript || (payload as any).transcript;
-            
+
             const updatePayload: Record<string, any> = {
               state: "concluida",
               concludedAt: new Date(),
@@ -142,6 +143,31 @@ export async function POST(req: Request) {
               .set(updatePayload)
               .where(eq(sessions.id, sessionId));
             console.log(`[Vapi Webhook] Sesión ${sessionId} actualizada a 'concluida' en DB con transcripción vinculada.`);
+
+            if (fullTranscript) {
+              const [session] = await db
+                .select({ trackSlug: sessions.trackSlug })
+                .from(sessions)
+                .where(eq(sessions.id, sessionId))
+                .limit(1);
+
+              if (session) {
+                try {
+                  const scorecard = await generateScorecard({
+                    transcript: fullTranscript,
+                    trackSlug: session.trackSlug,
+                  });
+                  await db
+                    .update(sessions)
+                    .set({ scorecard })
+                    .where(eq(sessions.id, sessionId));
+                  console.log(`[Vapi Webhook] Scorecard generado y guardado para sesión ${sessionId}.`);
+                } catch (scorecardError) {
+                  // no bloquea la respuesta del webhook — sesión queda 'concluida' sin scorecard, se puede reintentar
+                  console.error(`[Vapi Webhook] Error generando Scorecard para sesión ${sessionId}:`, scorecardError);
+                }
+              }
+            }
           } catch (dbError) {
             console.error(`[Vapi Webhook] Error operando en DB, fallback a MOCK:`, dbError);
             return NextResponse.json({
@@ -152,9 +178,6 @@ export async function POST(req: Request) {
             });
           }
         }
-
-        // Disparar llamada asíncrona a Vercel AI Gateway (Track A) con el transcript para generar Scorecard
-        console.log(`[Vapi Webhook] Disparando generación de Scorecard para sesión ${sessionId}...`);
 
         return NextResponse.json({
           success: true,
