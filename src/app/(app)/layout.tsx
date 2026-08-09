@@ -11,7 +11,7 @@ export default function AppLayout({
       <AppSidebar />
       <AppMobileNav />
       <main className="md:pl-64">
-        <div className="mx-auto max-w-2xl p-4 md:p-8">{children}</div>
+        <div className="mx-auto max-w-4xl p-4 md:p-8">{children}</div>
       </main>
     </div>
   );
