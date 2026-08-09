@@ -2,15 +2,24 @@
 
 import React from "react";
 import Link from "next/link";
-import { Radio, CheckCircle, Settings, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Radio, CheckCircle, Settings, ShieldCheck, ArrowLeft, FileText } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverDescription,
+} from "@/components/ui/popover";
 
 interface SessionHeaderProps {
   trackNombre: string;
   empresaRef: string;
   seniority: string;
   estado: "configurando" | "en_vivo" | "concluida";
+  blueprintContent?: string;
 }
 
 export function SessionHeader({
@@ -18,6 +27,7 @@ export function SessionHeader({
   empresaRef,
   seniority,
   estado,
+  blueprintContent,
 }: SessionHeaderProps) {
   return (
     <Card className="w-full">
@@ -33,6 +43,27 @@ export function SessionHeader({
           <div>
             <CardTitle className="text-lg md:text-xl font-bold flex items-center gap-2">
               {trackNombre}
+              {blueprintContent && (
+                <Popover>
+                  <PopoverTrigger
+                    title="Ver Blueprint"
+                    className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <FileText className="size-4" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 max-h-96 overflow-y-auto">
+                    <PopoverHeader>
+                      <PopoverTitle>Blueprint</PopoverTitle>
+                      <PopoverDescription>
+                        Guía que el entrevistador usa en esta sesión.
+                      </PopoverDescription>
+                    </PopoverHeader>
+                    <p className="whitespace-pre-wrap text-xs text-foreground">
+                      {blueprintContent}
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              )}
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">
               Empresa de referencia: <span className="font-medium text-foreground">{empresaRef}</span>
