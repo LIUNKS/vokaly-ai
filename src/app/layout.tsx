@@ -27,7 +27,11 @@ export const metadata: Metadata = {
   description: "Practice job interviews as a live, evaluated session",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"

@@ -9,7 +9,12 @@ import { SessionHeader } from "./components/SessionHeader";
 import { AudioVisualizer } from "./components/AudioVisualizer";
 import { CallControls } from "./components/CallControls";
 import { Clock, MessageSquare, AlertCircle, History, ArrowRight } from "lucide-react";
-import { getSessionAction, updateSessionStateAction, getSessionStateAction } from "../actions";
+import {
+  getSessionAction,
+  updateSessionStateAction,
+  getSessionStateAction,
+  updateSessionTranscriptAction,
+} from "../actions";
 import { PortalProvider } from "@portalsdk/react";
 import { portalClient } from "@/lib/portal/client";
 import { SessionChat } from "@/components/portal/session-chat";
@@ -84,6 +89,10 @@ export default function SesionEnVivoPage() {
         setDurationSeconds(elapsedSec);
         startTimer(elapsedSec);
       }
+
+      // Sincronizar la transcripción en la BD si la sesión ya existe
+      loadAndSyncTranscript(res.id);
+
       setIsSessionLoading(false);
     });
     return () => {
@@ -106,6 +115,7 @@ export default function SesionEnVivoPage() {
           setEstado("concluida");
           if (res.scorecard) setScorecardData(res.scorecard);
           stopTimer();
+          loadAndSyncTranscript(targetSessionId);
         }
       }, 3000);
     } else if (estado === "concluida" && !scorecardData) {
@@ -118,6 +128,34 @@ export default function SesionEnVivoPage() {
       if (interval) clearInterval(interval);
     };
   }, [dbSessionId, estado, scorecardData]);
+
+  // Función parametrizada para obtener y guardar la transcripción + vapiCallId en la BD
+  const loadAndSyncTranscript = async (targetSessionId?: string, targetCallId?: string) => {
+    try {
+      const activeSessionId = targetSessionId || dbSessionIdRef.current || sessionId;
+      let url = "/api/vapi/transcript";
+      if (activeSessionId) {
+        url += `?sessionId=${activeSessionId}`;
+      } else if (targetCallId) {
+        url += `?callId=${targetCallId}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.transcript && typeof data.transcript === "string" && data.transcript.trim().length > 0) {
+          if (activeSessionId) {
+            await updateSessionTranscriptAction(activeSessionId, data.callId, data.transcript);
+          }
+        } else if (data.callId && activeSessionId) {
+          await updateSessionTranscriptAction(activeSessionId, data.callId);
+        }
+      }
+    } catch (err) {
+      // Silencioso
+    }
+  };
 
   // Inicializar Vapi Web SDK y suscribir eventos
   useEffect(() => {
@@ -148,6 +186,10 @@ export default function SesionEnVivoPage() {
         if (dbSessionIdRef.current) {
           updateSessionStateAction(dbSessionIdRef.current, "concluida");
         }
+        // Guardar transcripción en la BD silenciosamente
+        setTimeout(() => {
+          loadAndSyncTranscript();
+        }, 1200);
       };
 
       const onMessage = (message: any) => {
@@ -245,7 +287,6 @@ export default function SesionEnVivoPage() {
     }
 
     setEstado("en_vivo");
-    if (targetSessionId) updateSessionStateAction(targetSessionId, "en_vivo");
 
     const vapi = vapiRef.current;
     const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
@@ -253,9 +294,13 @@ export default function SesionEnVivoPage() {
     if (vapi && assistantId) {
       try {
         startTimer();
-        await vapi.start(assistantId, {
+        const call = await vapi.start(assistantId, {
           variableValues: { sessionId: targetSessionId || sessionId },
         } as any);
+
+        if (targetSessionId) {
+          updateSessionStateAction(targetSessionId, "en_vivo", call?.id);
+        }
         setIsLoading(false);
       } catch (err: any) {
         setErrorMessage(`Error al conectar con Vapi WebRTC: ${err?.message || String(err)}`);
@@ -265,6 +310,7 @@ export default function SesionEnVivoPage() {
         setIsLoading(false);
       }
     } else {
+      if (targetSessionId) updateSessionStateAction(targetSessionId, "en_vivo");
       setTimeout(() => startMockCall(), 500);
     }
   };
@@ -302,6 +348,7 @@ export default function SesionEnVivoPage() {
       await updateSessionStateAction(targetSessionId, "concluida");
       const res = await getSessionStateAction(targetSessionId);
       if (res.scorecard) setScorecardData(res.scorecard);
+      loadAndSyncTranscript(targetSessionId);
     }
   };
 
