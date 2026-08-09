@@ -135,6 +135,7 @@ function ChatRoom({
     pushToRecent(emoji);
 
     send({
+      ephemeral: true,
       content: {
         emoji,
         senderId: myClientId.current,
