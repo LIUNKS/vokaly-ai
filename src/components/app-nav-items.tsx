@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserRound, MessageSquarePlus } from "lucide-react";
+import { UserRound, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "/nueva-sesion", label: "Nueva sesión", icon: MessageSquarePlus },
+  { href: "/", label: "Inicio", icon: Home },
   { href: "/profile", label: "Perfil", icon: UserRound },
 ];
 
