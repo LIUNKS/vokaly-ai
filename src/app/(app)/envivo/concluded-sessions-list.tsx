@@ -22,7 +22,7 @@ interface ConcludedSessionsListProps {
 
 export function ConcludedSessionsList({
   sessions,
-  itemsPerPage = 10,
+  itemsPerPage = 8,
 }: ConcludedSessionsListProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
