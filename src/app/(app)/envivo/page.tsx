@@ -205,7 +205,7 @@ export default async function EntrevistasEnVivoPage() {
           </h2>
         </div>
 
-        <ConcludedSessionsList sessions={concludedFormattedList} itemsPerPage={4} />
+        <ConcludedSessionsList sessions={concludedFormattedList} itemsPerPage={8} />
       </section>
     </div>
   );
